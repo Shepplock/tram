@@ -1,4 +1,4 @@
-const CACHE = 'trame-v6';
+const CACHE = 'printpak-v23';
 const FILES = ['./', './index.html'];
 
 self.addEventListener('install', e => {
