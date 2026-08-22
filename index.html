@@ -46,6 +46,8 @@ body{
 .cov small{font-size:10px;color:var(--fade)}
 .verdict{font-size:10.5px;margin-top:5px;min-height:1.4em;letter-spacing:.03em}
 .verdict.warn{color:var(--red)}
+.blank{font-size:10.5px;color:var(--fade);letter-spacing:.03em;min-height:1.3em}
+.blank b{font-weight:400;color:var(--ink)}
 
 /* ---------- onglets ---------- */
 .tabs{display:flex;border-bottom:1px solid var(--rule);background:var(--paper-deep);
@@ -136,6 +138,7 @@ video{display:none}
     <div class="cov" id="cov">—<small>%</small></div>
   </div>
   <div class="verdict" id="verdict"></div>
+  <div class="blank" id="blank"></div>
 </div>
 
 <div class="tabs" role="tablist">
@@ -337,7 +340,9 @@ function process(source, sw, sh, mirror){
     for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*amt));
   }
   const bp=20, wp=state.white, gm=state.gamma/100, fl=state.floor/100;
+  let blank=0;
   for(let i=0;i<g.length;i++){
+    if(!state.invert && g[i]>=wp) blank++;
     let v=(g[i]-bp)/Math.max(wp-bp,1);
     v=Math.pow(Math.max(0,Math.min(1,v)),gm);
     if(state.invert) v=1-v;
@@ -346,7 +351,7 @@ function process(source, sw, sh, mirror){
   const bits=dither(g,W,H,state.algo);
   let black=0;
   for(let i=0;i<bits.length;i++) if(bits[i]<128) black++;
-  return {bits,W,H,pct:black/bits.length*100};
+  return {bits,W,H,pct:black/bits.length*100,blank:blank/g.length*100};
 }
 
 function paint(canvas,r){
@@ -361,7 +366,13 @@ function paint(canvas,r){
   ctx.putImageData(img,0,0);
 }
 
-function setGauge(pct){
+function setGauge(pct,blank){
+  const b=$('#blank');
+  if(b) b.innerHTML = (blank==null||state.invert) ? '' :
+    'Papier vierge garanti : <b>'+blank.toFixed(0)+'%</b> — zéro point possible dans cette zone.';
+  setGaugeInner(pct);
+}
+function setGaugeInner(pct){
   $('#cov').innerHTML=pct.toFixed(1)+'<small>%</small>';
   $('#needle').style.left=Math.min(100,pct/50*100)+'%';
   const v=$('#verdict');
@@ -380,7 +391,7 @@ function render(){
   paint(out,r);
   const st=$('#stage');
   if(st.firstChild!==out){st.innerHTML='';st.appendChild(out)}
-  setGauge(r.pct);
+  setGauge(r.pct,r.blank);
 }
 
 /* ---------- contrôles ---------- */
@@ -493,7 +504,7 @@ function loop(){
   if(video.videoWidth){
     const r=process(video,video.videoWidth,video.videoHeight,facing==='user');
     paint(camView,r);
-    setGauge(r.pct);
+    setGauge(r.pct,r.blank);
   }
   requestAnimationFrame(loop);
 }
@@ -536,6 +547,7 @@ const KEY='trame:presets';
 const FACTORY=[
   {name:'Ciel & architecture',s:{w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs'}},
   {name:'Portrait grain fin', s:{w:384,sky:20,white:200,floor:42,gamma:62,sharp:8, blur:1,invert:false,algo:'fs'}},
+  {name:'Ciel blanc',         s:{w:384,sky:100,white:168,floor:43,gamma:74,sharp:14,blur:0,invert:false,algo:'fs'}},
   {name:'Silhouette',         s:{w:384,sky:30,white:190,floor:0, gamma:90,sharp:10,blur:1,invert:false,algo:'seuil'}}
 ];
 let presets=FACTORY.slice();
@@ -561,6 +573,34 @@ $('#save').addEventListener('click',async()=>{
   const saved=await store.get(KEY);
   if(saved&&saved.length) presets=saved;
   drawPresets();
+})();
+
+/* maintenir l'apercu affiche la photo d'origine, pour comparer */
+(function(){
+  const st=$('#stage'); let orig=null, showing=false;
+  function makeOrig(){
+    if(!srcImg) return null;
+    const c=document.createElement('canvas');
+    const W=out.width, H=out.height;
+    c.width=W; c.height=H;
+    const x=c.getContext('2d');
+    x.imageSmoothingQuality='high';
+    x.drawImage(srcImg,0,0,W,H);
+    c.style.cssText='image-rendering:auto;max-width:100%;max-height:calc(44vh - 22px);display:block';
+    return c;
+  }
+  function on(e){
+    if(!srcImg||showing) return;
+    e.preventDefault(); showing=true;
+    orig=makeOrig();
+    if(orig){ st.innerHTML=''; st.appendChild(orig); }
+  }
+  function off(){
+    if(!showing) return;
+    showing=false; st.innerHTML=''; st.appendChild(out);
+  }
+  ['touchstart','mousedown'].forEach(t=>st.addEventListener(t,on,{passive:false}));
+  ['touchend','touchcancel','mouseup','mouseleave'].forEach(t=>st.addEventListener(t,off));
 })();
 
 syncUI();
