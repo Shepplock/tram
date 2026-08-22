@@ -86,9 +86,14 @@ body{
 .lcd{background:var(--screen);border:3px solid var(--ink);padding:9px;position:relative}
 .lcd::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.055) 0 1px,transparent 1px 3px)}
-.well{background:var(--well);border:2px solid var(--ink);display:flex;
+.well{background:var(--well);border:2px solid var(--ink);display:flex;position:relative;
   justify-content:center;align-items:center;padding:7px;min-height:110px;max-height:40vh;overflow:hidden}
-#preview{image-rendering:pixelated;max-width:100%;max-height:calc(40vh - 20px);display:block}
+#preview,#liveView{image-rendering:pixelated;max-width:100%;max-height:calc(40vh - 20px);display:block}
+#liveTools{position:absolute;right:6px;bottom:6px;display:none;gap:5px;z-index:2}
+#liveTools button{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:7px 9px;cursor:pointer;background:var(--screen);color:var(--ink);
+  border:2px solid var(--ink);box-shadow:2px 2px 0 rgba(0,0,0,.28)}
+button.empty{background:transparent;border:0;width:100%;font-family:var(--mono);cursor:pointer}
 .empty{color:var(--lcd-2);font-size:10px;letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:30px 10px}
 
 .meter{margin-top:10px;position:relative;z-index:1}
@@ -209,8 +214,7 @@ input[type=range]::-moz-range-thumb{width:34px;height:34px;border-radius:50%;bor
 /* ---------- appareil photo ---------- */
 #cam{position:fixed;inset:0;z-index:60;background:var(--page);display:none;flex-direction:column}
 #cam.on{display:flex}
-#camTop{padding:calc(env(safe-area-inset-top) + 12px) 20px 0;color:var(--muted);font-size:8.5px;
-  letter-spacing:.16em;text-transform:uppercase;text-align:center}
+#camTop{color:var(--muted);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase}
 #camStage{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;min-height:0}
 #camView{image-rendering:pixelated;max-width:100%;max-height:100%;background:var(--well);border:3px solid var(--ink)}
 #camBar{display:flex;align-items:center;justify-content:space-between;padding:14px 22px calc(14px + env(safe-area-inset-bottom))}
@@ -228,9 +232,27 @@ input[type=range]::-moz-range-thumb{width:34px;height:34px;border-radius:50%;bor
   padding:8px 12px;background:var(--shell-dark);color:var(--chrome);
   border:2px solid var(--shell-line);cursor:pointer}
 #camFps button[aria-pressed=true]{background:var(--screen);color:var(--ink);border-color:var(--ink)}
-#recTime{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:18px;
+#recTime{position:absolute;top:calc(env(safe-area-inset-top) + 40px);left:18px;
   font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--accent);display:none}
 #recTime.on{display:block}
+
+/* tiroir de réglage rapide, par-dessus l'aperçu */
+#camTune{max-height:0;overflow:hidden;transition:max-height .2s ease;background:var(--shell);
+  border-top:3px solid var(--shell-line)}
+#camTune.open{max-height:46vh;overflow-y:auto}
+#camTune .in{padding:12px 14px 4px}
+#camStyles{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+#camStyles button{flex:0 0 auto;font-family:var(--mono);font-size:9px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;padding:9px 11px;cursor:pointer;
+  background:var(--shell-dark);color:var(--chrome);border:2px solid var(--shell-line)}
+#camStyles button[aria-pressed=true]{background:var(--screen);color:var(--ink);border-color:var(--ink)}
+#camTune .row{margin-bottom:12px}
+#camCov{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink);
+  background:var(--screen);border:2px solid var(--ink);padding:4px 8px}
+#camHead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(env(safe-area-inset-top) + 12px) 18px 0}
+#camHead span{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+#tuneBtn[aria-pressed=true]{background:var(--screen);color:var(--ink);border-color:var(--ink)}
 
 /* lecture de la vidéo enregistrée */
 #vid{position:fixed;inset:0;z-index:75;background:rgba(11,14,8,.95);display:none;
@@ -311,7 +333,10 @@ video{display:none}
 
 <div class="pin">
   <div class="lcd">
-    <div class="well"><div id="stage"><div class="empty">No image</div></div></div>
+    <div class="well">
+      <div id="stage"><div class="empty">No image</div></div>
+      <div id="liveTools"><button id="liveFlip">Flip</button></div>
+    </div>
     <div class="meter">
       <div class="lab"><span>Coverage</span><span class="cov" id="cov">—<small>%</small></span></div>
       <div class="blocks" id="blocks">
@@ -478,7 +503,10 @@ video{display:none}
 <video id="video" playsinline muted autoplay></video>
 
 <div id="cam">
-  <div id="camTop">Live dithered preview</div>
+  <div id="camHead">
+    <span id="camTop">Live dithered preview</span>
+    <span id="camCov">—</span>
+  </div>
   <div id="recTime">● 0:00</div>
   <div id="camStage"><canvas id="camView"></canvas></div>
   <div class="seg" id="camFps">
@@ -487,8 +515,37 @@ video{display:none}
     <button data-f="12">12 fps</button>
     <button data-f="24">24 fps</button>
   </div>
+  <div id="camTune"><div class="in">
+    <div id="camStyles">
+      <button data-a="fs">Floyd</button>
+      <button data-a="atkinson">Atkinson</button>
+      <button data-a="stucki">Stucki</button>
+      <button data-a="jarvis">Jarvis</button>
+      <button data-a="bayer">Bayer</button>
+      <button data-a="seuil">Threshold</button>
+      <button data-a="glyphes">Glyphs</button>
+      <button data-a="ascii">ASCII</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label>White point<i id="cvWhite">180</i></label>
+      <input type="range" id="cWhite" min="90" max="255" value="180">
+    </div>
+    <div class="row">
+      <label>Sky<i id="cvSky">65</i></label>
+      <input type="range" id="cSky" min="0" max="100" value="65">
+    </div>
+    <div class="row">
+      <label>Gamma<i id="cvGamma">0.80</i></label>
+      <input type="range" id="cGamma" min="40" max="160" value="80">
+    </div>
+    <div class="row" id="cCellRow" style="display:none">
+      <label>Cell size<i id="cvCell">8</i></label>
+      <input type="range" id="cCell" min="4" max="24" value="8">
+    </div>
+  </div></div>
   <div id="camBar">
     <button id="camClose">Close</button>
+    <button id="tuneBtn" aria-pressed="false">Tune</button>
     <button id="shutter" aria-label="Shutter"></button>
     <button id="recBtn" aria-label="Record"></button>
     <button id="camFlip">Rotate</button>
@@ -733,6 +790,7 @@ function setGauge(pct,blank){
 }
 function setGaugeInner(pct){
   $('#cov').innerHTML=pct.toFixed(1)+'<small>%</small>';
+  const cc=$('#camCov'); if(cc) cc.textContent=pct.toFixed(1)+'%';
   const n=Math.min(12,Math.round(pct/4));
   document.querySelectorAll('#blocks i').forEach((el,i)=>{
     el.className = i<n ? 'f' : ((i>=3&&i<=5) ? 't' : '');
@@ -748,7 +806,10 @@ function setGaugeInner(pct){
 let queued=false;
 function schedule(){if(!queued){queued=true;requestAnimationFrame(()=>{queued=false;render()})}}
 function render(){
-  const b=batch[cur]; if(!b) return;
+  const b=batch[cur];
+  if(!b){ camOn ? showLive() : showStart(); return; }
+  if(!camFull && camOn) stopStream();
+  $('#liveTools').style.display='none';
   const r=renderItem(b,cfg());
   paint(out,r);
   const st=$('#stage');
@@ -970,6 +1031,28 @@ sliders.forEach(([id,lbl,fmt])=>{
     schedule();
   });
 });
+/* doublons du tiroir caméra : mêmes clés, autres éléments */
+const MIRROR=[
+  {k:'white', el:'cWhite', lab:'cvWhite'},
+  {k:'sky',   el:'cSky',   lab:'cvSky'},
+  {k:'gamma', el:'cGamma', lab:'cvGamma', fmt:v=>(v/100).toFixed(2)},
+  {k:'cell',  el:'cCell',  lab:'cvCell'}
+];
+function bindMirror(){
+  MIRROR.forEach(m=>{
+    const e=$('#'+m.el); if(!e) return;
+    e.addEventListener('input',ev=>{ cfg()[m.k]=+ev.target.value; syncUI(); schedule(); });
+  });
+  $('#camStyles').addEventListener('click',ev=>{
+    const b=ev.target.closest('button'); if(!b) return;
+    cfg().algo=b.dataset.a; syncUI(); schedule();
+  });
+  $('#tuneBtn').addEventListener('click',()=>{
+    const on=$('#camTune').classList.toggle('open');
+    $('#tuneBtn').setAttribute('aria-pressed',on);
+  });
+}
+
 function syncUI(){
   const c=cfg();
   sliders.forEach(([id,lbl,fmt])=>{
@@ -977,12 +1060,18 @@ function syncUI(){
     document.querySelector(lbl).textContent=fmt(c[id]);
   });
   document.querySelectorAll('#widthSeg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.w===c.w));
-  document.querySelectorAll('#algoSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===c.algo));
+  document.querySelectorAll('#algoSeg button, #camStyles button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===c.algo));
   $('#invert').setAttribute('aria-pressed',c.invert);
   const grid = c.algo==='glyphes'||c.algo==='ascii';
   $('#cellRow').style.display = grid ? 'block' : 'none';
   $('#cell').value = c.cell||8;
   $('#vCell').textContent = c.cell||8;
+  const cr=$('#cCellRow'); if(cr) cr.style.display = grid ? 'block' : 'none';
+  MIRROR.forEach(m=>{
+    const e=$('#'+m.el), l=$('#'+m.lab), v=c[m.k];
+    if(e) e.value=v;
+    if(l) l.textContent = m.fmt? m.fmt(v) : v;
+  });
 }
 $('#widthSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cfg().w=+b.dataset.w;syncUI();schedule();updateExpInfo()});
 $('#algoSeg').addEventListener('click',e=>{
@@ -1067,29 +1156,56 @@ window.addEventListener('drop',e=>{
 
 /* ---------- appareil photo en direct ---------- */
 const video=$('#video');
-let stream=null, camOn=false, facing='environment';
+const liveView=document.createElement('canvas');
+liveView.id='liveView';
+let stream=null, camOn=false, camFull=false, facing='environment';
 
-async function openCam(){
-  $('#cam').classList.add('on');
+/* le direct se peint dans le grand écran ou dans le viseur du haut, selon l'écran actif */
+async function startStream(){
+  if(camOn) return true;
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)) return false;
   try{
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:facing,width:{ideal:1440},height:{ideal:1440}},audio:false
     });
     video.srcObject=stream;
     await video.play();
-    camOn=true;
-    loop();
-  }catch(err){
-    // pas de flux disponible : on retombe sur l'appareil natif
-    closeCam();
-    $('#fileCam').click();
-  }
+    camOn=true; loop(); return true;
+  }catch(e){ camOn=false; return false; }
+}
+function stopStream(){
+  camOn=false;
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+}
+function showLive(){
+  const st=$('#stage');
+  if(st.firstChild!==liveView){ st.innerHTML=''; st.appendChild(liveView); }
+  $('#liveTools').style.display='flex';
+}
+function showStart(){
+  $('#liveTools').style.display='none';
+  const st=$('#stage');
+  st.innerHTML='<button class="empty" id="startLive">Tap to start viewfinder</button>';
+  $('#startLive').addEventListener('click',async ()=>{
+    st.innerHTML='<div class="empty">Starting…</div>';
+    if(await startStream()) showLive();
+    else st.innerHTML='<div class="empty">No camera available</div>';
+  });
+}
+
+async function openCam(){
+  camFull=true;
+  $('#cam').classList.add('on');
+  if(!await startStream()){ closeCam(); $('#fileCam').click(); }
 }
 function closeCam(){
   stopRec();
-  camOn=false;
+  camFull=false;
+  $('#camTune').classList.remove('open');
+  $('#tuneBtn').setAttribute('aria-pressed',false);
   $('#cam').classList.remove('on');
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  if(batch.length) stopStream();   // une image occupe l'écran : le direct n'a plus lieu d'être
+  else showLive();
 }
 function loop(){
   if(!camOn) return;
@@ -1098,9 +1214,10 @@ function loop(){
   if(video.videoWidth && now-lastFrame >= gate){
     lastFrame=now;
     const r=process({source:video, crop:{x:0,y:0,w:video.videoWidth,h:video.videoHeight}, mirror:facing==='user'});
-    paint(camView,r);
+    const target = camFull ? camView : liveView;
+    paint(target,r);
     setGauge(r.pct,r.blank);
-    if(recording()) pushFrame();
+    if(recording()) pushFrame(target);
   }
   requestAnimationFrame(loop);
 }
@@ -1126,12 +1243,13 @@ $('#mode').addEventListener('click',e=>{
   shoot();
 });
 $('#camClose').addEventListener('click',closeCam);
-$('#camFlip').addEventListener('click',async ()=>{
+async function flipCam(){
   facing = facing==='environment' ? 'user' : 'environment';
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
-  camOn=false;
-  await openCam();
-});
+  stopStream();
+  await startStream();
+}
+$('#camFlip').addEventListener('click',flipCam);
+$('#liveFlip').addEventListener('click',flipCam);
 /* ================= enregistrement ================= */
 /* le meilleur conteneur disponible : MP4 d'abord, seul format que Photos accepte sur iOS */
 const VMIME=(()=>{
@@ -1147,12 +1265,13 @@ let rec=null, chunks=[], recStart=0, recTick=null, lastFrame=0, vidBlob=null;
 const recording=()=>!!rec && rec.state==='recording';
 
 /* on agrandit en plus proche voisin : sinon le lecteur video lisse la trame et la detruit */
-function pushFrame(){
-  const w=camView.width, h=camView.height;
+function pushFrame(src){
+  src = src || camView;
+  const w=src.width, h=src.height;
   const k=Math.max(1, Math.round(1080/w));
   if(recCan.width!==w*k){ recCan.width=w*k; recCan.height=h*k; }
   recCtx.imageSmoothingEnabled=false;
-  recCtx.drawImage(camView,0,0,recCan.width,recCan.height);
+  recCtx.drawImage(src,0,0,recCan.width,recCan.height);
 }
 function fmtT(ms){
   const t=Math.floor(ms/1000);
@@ -1160,7 +1279,7 @@ function fmtT(ms){
 }
 function startRec(){
   if(!VMIME || !camOn) return;
-  pushFrame();
+  pushFrame(camFull?camView:liveView);
   let stream;
   try{ stream=recCan.captureStream(device.fps); }catch(e){ return; }
   try{ rec=new MediaRecorder(stream,{mimeType:VMIME,videoBitsPerSecond:2500000}); }
@@ -1400,7 +1519,10 @@ $('#save').addEventListener('click',async()=>{
 })();
 
 bindPrefs();
+bindMirror();
 loadDevice();
+/* Safari exige souvent un geste avant d'ouvrir la caméra : si ça échoue, on propose un bouton */
+startStream().then(ok=>{ if(!batch.length) ok? showLive() : showStart(); });
 syncUI();
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
