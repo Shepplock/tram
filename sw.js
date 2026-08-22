@@ -1,5 +1,5 @@
-const CACHE = 'trame-v5';
-const FILES = ['./', './index.html', './icon.png'];
+const CACHE = 'trame-v6';
+const FILES = ['./', './index.html'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
