@@ -1,4 +1,4 @@
-const CACHE = 'printpak-v26';
+const CACHE = 'printpak-v27';
 const FILES = ['./', './index.html'];
 
 self.addEventListener('install', e => {
