@@ -1,276 +1,184 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="icon.png">
-<title>TRAME — ticket thermique</title>
+<title>TRAME</title>
 <style>
 :root{
-  --paper:#EDEAE3;
-  --paper-deep:#E2DED4;
-  --ink:#14120E;
-  --fade:#8A857A;
-  --rule:#C9C4B8;
-  --red:#B4232A;
+  --paper:#EDEAE3; --paper-deep:#E2DED4; --ink:#14120E;
+  --fade:#8A857A; --rule:#C9C4B8; --red:#B4232A;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --bar:calc(58px + env(safe-area-inset-bottom));
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overscroll-behavior:none}
 body{
+  background:var(--paper-deep); color:var(--ink);
+  font-family:var(--mono); font-size:13px; line-height:1.5;
+  -webkit-text-size-adjust:100%; padding-bottom:var(--bar);
+}
+.wrap{max-width:560px;margin:0 auto}
+
+/* ---------- aperçu épinglé ---------- */
+.pin{
+  position:sticky; top:0; z-index:20;
   background:var(--paper-deep);
-  color:var(--ink);
-  font-family:var(--mono);
-  font-size:13px;
-  line-height:1.5;
-  padding:0 0 40px;
-  -webkit-text-size-adjust:100%;
+  padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  border-bottom:1px solid var(--rule);
 }
-.wrap{max-width:520px;margin:0 auto;padding:0 14px}
-
-/* ---- entête façon ticket ---- */
-header{
-  text-align:center;
-  padding:26px 0 14px;
-}
-header h1{
-  margin:0;
-  font-size:15px;
-  font-weight:600;
-  letter-spacing:.42em;
-  text-indent:.42em;
-  text-transform:uppercase;
-}
-header .sub{
-  margin-top:6px;
-  font-size:10.5px;
-  color:var(--fade);
-  letter-spacing:.16em;
-  text-transform:uppercase;
-}
-.perf{
-  height:1px;
-  background:repeating-linear-gradient(90deg,var(--rule) 0 4px,transparent 4px 9px);
-  margin:14px 0;
-}
-
-/* ---- zone papier ---- */
 .paper{
-  background:var(--paper);
-  border:1px solid var(--rule);
-  padding:16px 12px;
-  position:relative;
+  background:var(--paper); border:1px solid var(--rule);
+  padding:10px; display:flex; justify-content:center; align-items:center;
+  min-height:120px; max-height:44vh; overflow:hidden;
 }
-.paper::before,.paper::after{
-  content:"";position:absolute;left:0;right:0;height:5px;
-  background:repeating-linear-gradient(90deg,var(--paper) 0 5px,transparent 5px 10px);
-}
-.paper::before{top:-1px}
-.paper::after{bottom:-1px}
-#stage{display:flex;justify-content:center;align-items:center;min-height:180px}
-#preview{
-  image-rendering:pixelated;
-  image-rendering:crisp-edges;
-  max-width:100%;
-  display:block;
-}
-.empty{
-  color:var(--fade);
-  text-align:center;
-  font-size:11.5px;
-  letter-spacing:.08em;
-  padding:44px 16px;
-  text-transform:uppercase;
-}
+#preview{image-rendering:pixelated;max-width:100%;max-height:calc(44vh - 22px);display:block}
+.empty{color:var(--fade);font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:34px 10px}
 
-/* ---- jauge de couverture : l'élément signature ---- */
-.gauge{margin:18px 0 4px}
-.gauge-top{
-  display:flex;justify-content:space-between;align-items:baseline;
-  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fade);
-}
-.gauge-val{font-size:22px;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
-.gauge-val small{font-size:12px;color:var(--fade);letter-spacing:0}
-.track{
-  position:relative;height:26px;margin-top:8px;
-  border:1px solid var(--rule);
-  background:repeating-linear-gradient(90deg,transparent 0 3px,var(--paper-deep) 3px 4px);
-}
-.band{
-  position:absolute;top:0;bottom:0;
-  left:24%;width:20%;
-  background:var(--paper);
-  border-left:1px solid var(--ink);border-right:1px solid var(--ink);
-}
-.band span{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--fade);white-space:nowrap;
-}
-.needle{
-  position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--red);
-  transition:left .12s linear;
-}
-.verdict{
-  margin-top:7px;font-size:11px;letter-spacing:.06em;min-height:1.5em;
-}
-.verdict.ok{color:var(--ink)}
+/* jauge compacte */
+.gauge{display:flex;align-items:center;gap:9px;margin-top:8px}
+.track{position:relative;flex:1;height:16px;border:1px solid var(--rule);
+  background:repeating-linear-gradient(90deg,transparent 0 3px,var(--paper-deep) 3px 4px)}
+.band{position:absolute;top:0;bottom:0;left:24%;width:20%;background:var(--paper);
+  border-left:1px solid var(--ink);border-right:1px solid var(--ink)}
+.needle{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--red);transition:left .1s linear}
+.cov{font-size:15px;font-variant-numeric:tabular-nums;min-width:58px;text-align:right}
+.cov small{font-size:10px;color:var(--fade)}
+.verdict{font-size:10.5px;margin-top:5px;min-height:1.4em;letter-spacing:.03em}
 .verdict.warn{color:var(--red)}
 
-/* ---- contrôles ---- */
-section{margin-top:22px}
-.legend{
-  font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--fade);
-  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+/* ---------- onglets ---------- */
+.tabs{display:flex;border-bottom:1px solid var(--rule);background:var(--paper-deep);
+  position:sticky;top:0;z-index:15}
+.tabs button{
+  flex:1;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  padding:14px 4px;background:transparent;border:0;border-bottom:2px solid transparent;
+  color:var(--fade);cursor:pointer
 }
-.legend::after{content:"";flex:1;height:1px;background:var(--rule)}
-.row{margin-bottom:14px}
-.row label{
-  display:flex;justify-content:space-between;align-items:baseline;
-  font-size:11.5px;margin-bottom:5px;
-}
-.row label b{font-weight:400;letter-spacing:.04em}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.panel{display:none;padding:16px 14px 24px}
+.panel.on{display:block}
+
+/* ---------- contrôles ---------- */
+.row{margin-bottom:20px}
+.row label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;margin-bottom:2px}
 .row label i{font-style:normal;color:var(--fade);font-variant-numeric:tabular-nums}
-.hint{font-size:10px;color:var(--fade);margin-top:3px;letter-spacing:.02em;line-height:1.45}
-input[type=range]{
-  -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;
-}
+.hint{font-size:10.5px;color:var(--fade);letter-spacing:.02em;line-height:1.45;margin-top:2px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:38px;background:transparent;margin:0;display:block}
 input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--ink)}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:15px;height:15px;margin-top:-7px;
-  background:var(--paper);border:1.5px solid var(--ink);border-radius:0;
-}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-13px;
+  background:var(--paper);border:1.5px solid var(--ink);border-radius:0}
 input[type=range]::-moz-range-track{height:1px;background:var(--ink)}
-input[type=range]::-moz-range-thumb{width:13px;height:13px;background:var(--paper);border:1.5px solid var(--ink);border-radius:0}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;background:var(--paper);border:1.5px solid var(--ink);border-radius:0}
 
-.seg{display:flex;flex-wrap:wrap;gap:5px}
-.seg button{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
-  padding:7px 9px;background:transparent;color:var(--fade);
-  border:1px solid var(--rule);cursor:pointer;text-transform:uppercase;
-}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font-family:var(--mono);font-size:11px;letter-spacing:.05em;padding:11px 12px;
+  background:transparent;color:var(--fade);border:1px solid var(--rule);cursor:pointer;text-transform:uppercase}
 .seg button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.legend{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--fade);
+  display:flex;align-items:center;gap:9px;margin:0 0 12px}
+.legend::after{content:"";flex:1;height:1px;background:var(--rule)}
 
-.btn{
-  font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
-  padding:12px 14px;background:var(--ink);color:var(--paper);border:1px solid var(--ink);
-  cursor:pointer;width:100%;
-}
+.btn{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding:14px;background:var(--ink);color:var(--paper);border:1px solid var(--ink);cursor:pointer;width:100%}
 .btn.ghost{background:transparent;color:var(--ink)}
-.btn:disabled{opacity:.32;cursor:default}
-.btns{display:flex;gap:8px;margin-top:8px}
+.chip{display:flex;border:1px solid var(--rule);margin:0 6px 6px 0}
+.chip b{font-weight:400;font-size:11px;padding:10px 11px;cursor:pointer}
+.chip i{font-style:normal;padding:10px 10px;color:var(--fade);border-left:1px solid var(--rule);cursor:pointer}
+.preset-list{display:flex;flex-wrap:wrap}
 
-/* ---- presets ---- */
-.preset-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
-.chip{
-  display:flex;align-items:stretch;border:1px solid var(--rule);
+/* ---------- barre d'action basse ---------- */
+.bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+  background:var(--paper);border-top:1px solid var(--rule);
+  padding-bottom:env(safe-area-inset-bottom);
 }
-.chip b{
-  font-weight:400;font-size:10.5px;letter-spacing:.05em;padding:7px 8px;cursor:pointer;
+.bar button{
+  flex:1;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:16px 4px;background:transparent;border:0;border-right:1px solid var(--rule);
+  color:var(--ink);cursor:pointer
 }
-.chip i{
-  font-style:normal;padding:7px 7px;color:var(--fade);cursor:pointer;
-  border-left:1px solid var(--rule);font-size:10.5px;
-}
-.chip b:active{background:var(--ink);color:var(--paper)}
+.bar button:last-child{border-right:0}
+.bar button:disabled{color:var(--rule)}
+.bar button.key{background:var(--ink);color:var(--paper)}
 
-/* ---- export ---- */
-#sheet{
-  position:fixed;inset:0;background:rgba(20,18,14,.9);z-index:40;
-  display:none;align-items:center;justify-content:center;padding:20px;
-}
+/* ---------- appareil photo ---------- */
+#cam{position:fixed;inset:0;z-index:60;background:#0B0A08;display:none;flex-direction:column}
+#cam.on{display:flex}
+#camStage{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;min-height:0}
+#camView{image-rendering:pixelated;max-width:100%;max-height:100%;background:var(--paper)}
+#camBar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px calc(14px + env(safe-area-inset-bottom))}
+#camBar button{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  background:transparent;border:0;color:var(--paper);padding:12px;cursor:pointer}
+#shutter{width:64px;height:64px;border-radius:50%;background:var(--paper);border:3px solid #0B0A08;
+  box-shadow:0 0 0 2px var(--paper);cursor:pointer;padding:0}
+#camMsg{color:var(--fade);text-align:center;font-size:11px;padding:20px;line-height:1.6}
+#camTop{padding:calc(env(safe-area-inset-top) + 12px) 20px 0;color:var(--fade);font-size:10px;
+  letter-spacing:.16em;text-transform:uppercase;text-align:center}
+
+/* ---------- export ---------- */
+#sheet{position:fixed;inset:0;background:rgba(11,10,8,.94);z-index:70;display:none;
+  align-items:center;justify-content:center;padding:18px}
 #sheet.on{display:flex}
 #sheet .box{background:var(--paper);padding:14px;max-width:100%;max-height:100%;overflow:auto;text-align:center}
 #sheet img{image-rendering:pixelated;max-width:100%;display:block;margin:0 auto 12px}
-#sheet p{font-size:11px;color:var(--fade);margin:0 0 12px;letter-spacing:.04em}
-
-.foot{margin-top:26px;font-size:10px;color:var(--fade);text-align:center;letter-spacing:.08em;line-height:1.7}
+#sheet p{font-size:11px;color:var(--fade);margin:0 0 12px;letter-spacing:.03em}
 input[type=file]{display:none}
+video{display:none}
 </style>
 
 <div class="wrap">
-<header>
-  <h1>Trame</h1>
-  <div class="sub">Préparation ticket thermique</div>
-</header>
-<div class="perf"></div>
 
-<div class="paper">
-  <div id="stage"><div class="empty">Aucune image</div></div>
-</div>
-
-<div class="gauge">
-  <div class="gauge-top">
-    <span>Couverture noire</span>
-    <span class="gauge-val" id="cov">—<small>%</small></span>
-  </div>
-  <div class="track">
-    <div class="band"><span>zone visée</span></div>
-    <div class="needle" id="needle" style="left:0"></div>
+<div class="pin">
+  <div class="paper"><div id="stage"><div class="empty">Aucune image</div></div></div>
+  <div class="gauge">
+    <div class="track"><div class="band"></div><div class="needle" id="needle" style="left:0"></div></div>
+    <div class="cov" id="cov">—<small>%</small></div>
   </div>
   <div class="verdict" id="verdict"></div>
 </div>
 
-<div class="btns">
-  <button class="btn" id="pick">Choisir une photo</button>
-  <button class="btn ghost" id="export" disabled>Exporter</button>
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-p="ton">Tonalité</button>
+  <button role="tab" aria-selected="false" data-p="trame">Trame</button>
+  <button role="tab" aria-selected="false" data-p="pre">Réglages</button>
 </div>
-<input type="file" id="file" accept="image/*">
 
-<section>
-  <div class="legend">Support</div>
-  <div class="row">
-    <label><b>Largeur du papier</b></label>
-    <div class="seg" id="widthSeg">
-      <button data-w="384" aria-pressed="true">384 px — 58 mm</button>
-      <button data-w="576" aria-pressed="false">576 px — 80 mm</button>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="legend">Tonalité</div>
-
+<div class="panel on" id="p-ton">
   <div class="row">
     <label><b>Éclaircir le ciel</b><i id="vSky">65</i></label>
     <input type="range" id="sky" min="0" max="100" value="65">
-    <div class="hint">Pondère le canal bleu à la conversion noir et blanc. À 0, un ciel bleu tombe en gris moyen et se couvre de points.</div>
+    <div class="hint">Pondère le bleu à la conversion. À 0, un ciel bleu tombe en gris moyen et se couvre de points.</div>
   </div>
-
   <div class="row">
     <label><b>Point blanc</b><i id="vWhite">180</i></label>
     <input type="range" id="white" min="90" max="255" value="180">
-    <div class="hint">Tout ce qui dépasse devient blanc pur. C'est le seul réglage qui garantit zéro point : à 254 il en reste encore.</div>
+    <div class="hint">Le seul réglage qui garantit zéro point. À 254 il en reste encore.</div>
   </div>
-
   <div class="row">
     <label><b>Plancher</b><i id="vFloor">40</i></label>
     <input type="range" id="floor" min="0" max="70" value="40">
-    <div class="hint">Empêche le noir pur. Évite les aplats qui gondolent le papier.</div>
+    <div class="hint">Empêche le noir pur, qui fait gondoler le papier.</div>
   </div>
-
   <div class="row">
     <label><b>Luminosité</b><i id="vGamma">0.80</i></label>
     <input type="range" id="gamma" min="40" max="160" value="80">
   </div>
-
   <div class="row">
     <label><b>Accentuation</b><i id="vSharp">1.4</i></label>
     <input type="range" id="sharp" min="0" max="30" value="14">
-    <div class="hint">Sauve les détails fins qui disparaissent à la réduction : câbles, grilles, typo.</div>
+    <div class="hint">Sauve les détails fins perdus à la réduction : câbles, grilles, typo.</div>
   </div>
-
   <div class="row">
     <label><b>Flou</b><i id="vBlur">0</i></label>
     <input type="range" id="blur" min="0" max="3" value="0">
     <div class="hint">À monter seulement sur les photos sombres et bruitées.</div>
   </div>
+  <div class="seg"><button id="invert" aria-pressed="false">Inverser</button></div>
+</div>
 
-  <div class="row">
-    <div class="seg"><button id="invert" aria-pressed="false">Inverser</button></div>
-  </div>
-</section>
-
-<section>
-  <div class="legend">Trame</div>
+<div class="panel" id="p-trame">
+  <div class="legend">Algorithme</div>
   <div class="seg" id="algoSeg">
     <button data-a="fs" aria-pressed="true">Floyd–Steinberg</button>
     <button data-a="atkinson" aria-pressed="false">Atkinson</button>
@@ -279,280 +187,384 @@ input[type=file]{display:none}
     <button data-a="bayer" aria-pressed="false">Bayer</button>
     <button data-a="seuil" aria-pressed="false">Seuil</button>
   </div>
-</section>
-
-<section>
-  <div class="legend">Réglages enregistrés</div>
-  <div class="preset-list" id="presets"></div>
-  <button class="btn ghost" id="save">Enregistrer les réglages actuels</button>
-</section>
-
-<div class="perf"></div>
-<div class="foot">
-  Tout se calcule sur l'appareil.<br>
-  Partager → Sur l'écran d'accueil pour l'utiliser hors ligne.
+  <div class="legend" style="margin-top:26px">Largeur du papier</div>
+  <div class="seg" id="widthSeg">
+    <button data-w="384" aria-pressed="true">384 px — 58 mm</button>
+    <button data-w="576" aria-pressed="false">576 px — 80 mm</button>
+  </div>
 </div>
+
+<div class="panel" id="p-pre">
+  <div class="legend">Enregistrés</div>
+  <div class="preset-list" id="presets"></div>
+  <button class="btn ghost" id="save" style="margin-top:10px">Enregistrer les réglages actuels</button>
+  <div class="legend" style="margin-top:28px">Formats</div>
+  <div class="hint">
+    JPEG, PNG, HEIC, WebP, AVIF, GIF, BMP, SVG, TIFF — selon ce que sait décoder
+    ton navigateur. Sur iPhone le HEIC passe nativement.<br><br>
+    Le RAW (DNG, ARW, CR2, NEF…) n'est pas lisible : convertis-le en JPEG avant.<br><br>
+    Tu peux aussi coller une image depuis le presse-papier, ou en déposer une
+    sur la page depuis un ordinateur.
+  </div>
+  <div class="hint" style="margin-top:22px;text-align:center">
+    Tout se calcule sur l'appareil.<br>Aucune image n'est envoyée nulle part.
+  </div>
+</div>
+
+</div>
+
+<div class="bar">
+  <button id="shoot">Photo</button>
+  <button id="pick">Importer</button>
+  <button id="export" class="key" disabled>Exporter</button>
+</div>
+
+<input type="file" id="file" accept="image/*,.heic,.heif,.avif,.webp,.tif,.tiff,.bmp,.jxl,.dng,.arw,.cr2,.cr3,.nef,.orf,.raf,.rw2">
+<input type="file" id="fileCam" accept="image/*" capture="environment">
+<video id="video" playsinline muted autoplay></video>
+
+<div id="cam">
+  <div id="camTop">Aperçu tramé en direct</div>
+  <div id="camStage"><canvas id="camView"></canvas></div>
+  <div id="camBar">
+    <button id="camClose">Fermer</button>
+    <button id="shutter" aria-label="Déclencher"></button>
+    <button id="camFlip">Pivoter</button>
+  </div>
 </div>
 
 <div id="sheet"><div class="box">
   <img id="outImg" alt="Résultat">
-  <p>Appui long sur l'image → Enregistrer dans Photos</p>
+  <p id="sheetMsg">Appui long sur l'image → Enregistrer dans Photos</p>
   <button class="btn ghost" id="closeSheet">Fermer</button>
 </div></div>
 
 <script>
 const $ = s => document.querySelector(s);
-const state = {
-  w:384, sky:65, white:180, floor:40, gamma:80, sharp:14, blur:0,
-  invert:false, algo:'fs'
-};
+const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs'};
 let srcImg = null;
-const src = document.createElement('canvas');
+
+const work = document.createElement('canvas');
+const wctx = work.getContext('2d',{willReadFrequently:true});
 const out = document.createElement('canvas');
 out.id = 'preview';
+const camView = $('#camView');
 
 /* ---------- stockage ---------- */
 const mem = {};
-const hasLS = (()=>{ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; } })();
+const hasLS = (()=>{try{localStorage.setItem('__t','1');localStorage.removeItem('__t');return true}catch(e){return false}})();
 const store = {
   async get(k){
-    if(hasLS){ const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; }
-    try{ const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; }
-    catch(e){ return mem[k] ?? null; }
+    if(hasLS){const r=localStorage.getItem(k);return r?JSON.parse(r):null}
+    try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null}catch(e){return mem[k]??null}
   },
   async set(k,v){
-    if(hasLS){ localStorage.setItem(k, JSON.stringify(v)); return; }
-    try{ await window.storage.set(k, JSON.stringify(v)); }
-    catch(e){ mem[k] = v; }
+    if(hasLS){localStorage.setItem(k,JSON.stringify(v));return}
+    try{await window.storage.set(k,JSON.stringify(v))}catch(e){mem[k]=v}
   }
 };
 
 /* ---------- traitement ---------- */
-function boxBlur(g, w, h, r){
+function boxBlur(g,w,h,r){
   if(r<=0) return g;
-  const tmp = new Float32Array(g.length);
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      let s=0,n=0;
-      for(let d=-r;d<=r;d++){ const xx=x+d; if(xx>=0&&xx<w){ s+=g[y*w+xx]; n++; } }
-      tmp[y*w+x]=s/n;
-    }
+  const t=new Float32Array(g.length), o=new Float32Array(g.length);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    let s=0,n=0;
+    for(let d=-r;d<=r;d++){const xx=x+d;if(xx>=0&&xx<w){s+=g[y*w+xx];n++}}
+    t[y*w+x]=s/n;
   }
-  const o = new Float32Array(g.length);
-  for(let x=0;x<w;x++){
-    for(let y=0;y<h;y++){
-      let s=0,n=0;
-      for(let d=-r;d<=r;d++){ const yy=y+d; if(yy>=0&&yy<h){ s+=tmp[yy*w+x]; n++; } }
-      o[y*w+x]=s/n;
-    }
+  for(let x=0;x<w;x++)for(let y=0;y<h;y++){
+    let s=0,n=0;
+    for(let d=-r;d<=r;d++){const yy=y+d;if(yy>=0&&yy<h){s+=t[yy*w+x];n++}}
+    o[y*w+x]=s/n;
   }
   return o;
 }
-
-const KERNELS = {
-  fs:       [[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]],
-  atkinson: [[1,0,1/8],[2,0,1/8],[-1,1,1/8],[0,1,1/8],[1,1,1/8],[0,2,1/8]],
-  stucki:   [[1,0,8/42],[2,0,4/42],[-2,1,2/42],[-1,1,4/42],[0,1,8/42],[1,1,4/42],[2,1,2/42],
-             [-2,2,1/42],[-1,2,2/42],[0,2,4/42],[1,2,2/42],[2,2,1/42]],
-  jarvis:   [[1,0,7/48],[2,0,5/48],[-2,1,3/48],[-1,1,5/48],[0,1,7/48],[1,1,5/48],[2,1,3/48],
-             [-2,2,1/48],[-1,2,3/48],[0,2,5/48],[1,2,3/48],[2,2,1/48]]
+const KERNELS={
+  fs:[[1,0,7/16],[-1,1,3/16],[0,1,5/16],[1,1,1/16]],
+  atkinson:[[1,0,.125],[2,0,.125],[-1,1,.125],[0,1,.125],[1,1,.125],[0,2,.125]],
+  stucki:[[1,0,8/42],[2,0,4/42],[-2,1,2/42],[-1,1,4/42],[0,1,8/42],[1,1,4/42],[2,1,2/42],
+          [-2,2,1/42],[-1,2,2/42],[0,2,4/42],[1,2,2/42],[2,2,1/42]],
+  jarvis:[[1,0,7/48],[2,0,5/48],[-2,1,3/48],[-1,1,5/48],[0,1,7/48],[1,1,5/48],[2,1,3/48],
+          [-2,2,1/48],[-1,2,3/48],[0,2,5/48],[1,2,3/48],[2,2,1/48]]
 };
-const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
 
-function dither(g, w, h, algo){
-  const o = new Uint8ClampedArray(w*h);
-  if(algo==='seuil'){
-    for(let i=0;i<g.length;i++) o[i] = g[i] > 127 ? 255 : 0;
-    return o;
-  }
+function dither(g,w,h,algo){
+  const o=new Uint8ClampedArray(w*h);
+  if(algo==='seuil'){for(let i=0;i<g.length;i++)o[i]=g[i]>127?255:0;return o}
   if(algo==='bayer'){
-    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
-      const t = (BAYER[y&3][x&3] + 0.5) / 16 * 255;
-      o[y*w+x] = g[y*w+x] > t ? 255 : 0;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const t=(BAYER[y&3][x&3]+.5)/16*255;
+      o[y*w+x]=g[y*w+x]>t?255:0;
     }
     return o;
   }
-  const k = KERNELS[algo] || KERNELS.fs;
-  const buf = Float32Array.from(g);
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const i = y*w+x, old = buf[i], nv = old > 127 ? 255 : 0;
-      o[i] = nv;
-      const err = old - nv;
-      for(const [dx,dy,f] of k){
-        const nx = x+dx, ny = y+dy;
-        if(nx>=0 && nx<w && ny<h) buf[ny*w+nx] += err*f;
-      }
+  const k=KERNELS[algo]||KERNELS.fs, buf=Float32Array.from(g);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=y*w+x, old=buf[i], nv=old>127?255:0;
+    o[i]=nv;
+    const e=old-nv;
+    for(let j=0;j<k.length;j++){
+      const nx=x+k[j][0], ny=y+k[j][1];
+      if(nx>=0&&nx<w&&ny<h) buf[ny*w+nx]+=e*k[j][2];
     }
   }
   return o;
 }
 
-let queued = false;
-function schedule(){ if(!queued){ queued = true; requestAnimationFrame(()=>{ queued=false; render(); }); } }
-
-function render(){
-  if(!srcImg) return;
+/* dessine une source dans le canvas de travail puis renvoie {bits,w,h,pct} */
+function process(source, sw, sh, mirror){
   const W = state.w;
-  const H = Math.max(1, Math.round(srcImg.height * W / srcImg.width));
-  src.width = W; src.height = H;
-  const sctx = src.getContext('2d', {willReadFrequently:true});
-  sctx.imageSmoothingEnabled = true;
-  sctx.imageSmoothingQuality = 'high';
-  sctx.drawImage(srcImg, 0, 0, W, H);
-  const d = sctx.getImageData(0,0,W,H).data;
+  const H = Math.max(1, Math.round(sh * W / sw));
+  work.width=W; work.height=H;
+  wctx.save();
+  wctx.imageSmoothingEnabled=true; wctx.imageSmoothingQuality='high';
+  if(mirror){ wctx.translate(W,0); wctx.scale(-1,1); }
+  wctx.drawImage(source,0,0,W,H);
+  wctx.restore();
+  const d=wctx.getImageData(0,0,W,H).data;
 
-  // niveaux de gris, pondération bleue progressive
-  const t = state.sky/100;
-  const wr = 0.299 + (0.10-0.299)*t;
-  const wg = 0.587 + (0.25-0.587)*t;
-  const wb = 0.114 + (0.65-0.114)*t;
-  let g = new Float32Array(W*H);
-  for(let i=0,p=0;i<g.length;i++,p+=4) g[i] = wr*d[p] + wg*d[p+1] + wb*d[p+2];
+  const t=state.sky/100;
+  const wr=.299+(.10-.299)*t, wg=.587+(.25-.587)*t, wb=.114+(.65-.114)*t;
+  let g=new Float32Array(W*H);
+  for(let i=0,p=0;i<g.length;i++,p+=4) g[i]=wr*d[p]+wg*d[p+1]+wb*d[p+2];
 
-  if(state.blur>0) g = boxBlur(g, W, H, state.blur);
-
-  const amt = state.sharp/10;
+  if(state.blur>0) g=boxBlur(g,W,H,state.blur);
+  const amt=state.sharp/10;
   if(amt>0){
-    const bl = boxBlur(g, W, H, 1);
-    for(let i=0;i<g.length;i++) g[i] = Math.max(0, Math.min(255, g[i] + (g[i]-bl[i])*amt));
+    const bl=boxBlur(g,W,H,1);
+    for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*amt));
   }
-
-  const bp = 20, wp = state.white, gm = state.gamma/100, fl = state.floor/100;
+  const bp=20, wp=state.white, gm=state.gamma/100, fl=state.floor/100;
   for(let i=0;i<g.length;i++){
-    let v = (g[i]-bp)/Math.max(wp-bp,1);
-    v = Math.pow(Math.max(0, Math.min(1, v)), gm);
-    if(state.invert) v = 1-v;
-    g[i] = (fl + v*(1-fl))*255;
+    let v=(g[i]-bp)/Math.max(wp-bp,1);
+    v=Math.pow(Math.max(0,Math.min(1,v)),gm);
+    if(state.invert) v=1-v;
+    g[i]=(fl+v*(1-fl))*255;
   }
+  const bits=dither(g,W,H,state.algo);
+  let black=0;
+  for(let i=0;i<bits.length;i++) if(bits[i]<128) black++;
+  return {bits,W,H,pct:black/bits.length*100};
+}
 
-  const bits = dither(g, W, H, state.algo);
-
-  out.width = W; out.height = H;
-  const octx = out.getContext('2d');
-  const img = octx.createImageData(W,H);
-  let black = 0;
-  for(let i=0;i<bits.length;i++){
-    const v = bits[i];
-    if(v < 128) black++;
-    const p = i*4;
+function paint(canvas,r){
+  canvas.width=r.W; canvas.height=r.H;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(r.W,r.H);
+  for(let i=0;i<r.bits.length;i++){
+    const p=i*4, v=r.bits[i];
     img.data[p]=img.data[p+1]=img.data[p+2]=v;
     img.data[p+3]=255;
   }
-  octx.putImageData(img,0,0);
-
-  const stage = $('#stage');
-  if(stage.firstChild !== out){ stage.innerHTML=''; stage.appendChild(out); }
-
-  const pct = black/bits.length*100;
-  $('#cov').innerHTML = pct.toFixed(1) + '<small>%</small>';
-  $('#needle').style.left = Math.min(100, pct/50*100) + '%';
-  const v = $('#verdict');
-  if(pct > 30){ v.className='verdict warn'; v.textContent = 'Beaucoup trop dense — le papier va gondoler.'; }
-  else if(pct > 22){ v.className='verdict warn'; v.textContent = 'Un peu sombre. Baisse le point blanc.'; }
-  else if(pct >= 12){ v.className='verdict ok'; v.textContent = 'Dans la zone. Vérifie que le ciel est vierge.'; }
-  else if(pct >= 6){ v.className='verdict warn'; v.textContent = 'Très clair — le sujet risque de s\'effacer.'; }
-  else { v.className='verdict warn'; v.textContent = 'Presque rien ne s\'imprimera.'; }
+  ctx.putImageData(img,0,0);
 }
 
-/* ---------- liaison des contrôles ---------- */
-const sliders = [
-  ['sky','#vSky', x=>x],
-  ['white','#vWhite', x=>x],
-  ['floor','#vFloor', x=>x],
-  ['gamma','#vGamma', x=>(x/100).toFixed(2)],
-  ['sharp','#vSharp', x=>(x/10).toFixed(1)],
-  ['blur','#vBlur', x=>x]
-];
+function setGauge(pct){
+  $('#cov').innerHTML=pct.toFixed(1)+'<small>%</small>';
+  $('#needle').style.left=Math.min(100,pct/50*100)+'%';
+  const v=$('#verdict');
+  if(pct>30){v.className='verdict warn';v.textContent='Beaucoup trop dense — le papier va gondoler.'}
+  else if(pct>22){v.className='verdict warn';v.textContent='Un peu sombre. Baisse le point blanc.'}
+  else if(pct>=12){v.className='verdict';v.textContent='Dans la zone. Vérifie que le ciel est vierge.'}
+  else if(pct>=6){v.className='verdict warn';v.textContent='Très clair — le sujet risque de s\'effacer.'}
+  else{v.className='verdict warn';v.textContent='Presque rien ne s\'imprimera.'}
+}
+
+let queued=false;
+function schedule(){if(!queued){queued=true;requestAnimationFrame(()=>{queued=false;render()})}}
+function render(){
+  if(!srcImg) return;
+  const r=process(srcImg,srcImg.width,srcImg.height,false);
+  paint(out,r);
+  const st=$('#stage');
+  if(st.firstChild!==out){st.innerHTML='';st.appendChild(out)}
+  setGauge(r.pct);
+}
+
+/* ---------- contrôles ---------- */
+const sliders=[['sky','#vSky',x=>x],['white','#vWhite',x=>x],['floor','#vFloor',x=>x],
+  ['gamma','#vGamma',x=>(x/100).toFixed(2)],['sharp','#vSharp',x=>(x/10).toFixed(1)],['blur','#vBlur',x=>x]];
 sliders.forEach(([id,lbl,fmt])=>{
-  const el = document.getElementById(id);
-  el.addEventListener('input', ()=>{
-    state[id] = +el.value;
-    document.querySelector(lbl).textContent = fmt(+el.value);
+  const el=document.getElementById(id);
+  el.addEventListener('input',()=>{
+    state[id]=+el.value;
+    document.querySelector(lbl).textContent=fmt(+el.value);
     schedule();
   });
 });
 function syncUI(){
   sliders.forEach(([id,lbl,fmt])=>{
-    document.getElementById(id).value = state[id];
-    document.querySelector(lbl).textContent = fmt(state[id]);
+    document.getElementById(id).value=state[id];
+    document.querySelector(lbl).textContent=fmt(state[id]);
   });
-  document.querySelectorAll('#widthSeg button').forEach(b=>
-    b.setAttribute('aria-pressed', +b.dataset.w===state.w));
-  document.querySelectorAll('#algoSeg button').forEach(b=>
-    b.setAttribute('aria-pressed', b.dataset.a===state.algo));
-  $('#invert').setAttribute('aria-pressed', state.invert);
+  document.querySelectorAll('#widthSeg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.w===state.w));
+  document.querySelectorAll('#algoSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.a===state.algo));
+  $('#invert').setAttribute('aria-pressed',state.invert);
 }
-$('#widthSeg').addEventListener('click', e=>{
-  const b = e.target.closest('button'); if(!b) return;
-  state.w = +b.dataset.w; syncUI(); schedule();
-});
-$('#algoSeg').addEventListener('click', e=>{
-  const b = e.target.closest('button'); if(!b) return;
-  state.algo = b.dataset.a; syncUI(); schedule();
-});
-$('#invert').addEventListener('click', ()=>{ state.invert = !state.invert; syncUI(); schedule(); });
+$('#widthSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.w=+b.dataset.w;syncUI();schedule()});
+$('#algoSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.algo=b.dataset.a;syncUI();schedule()});
+$('#invert').addEventListener('click',()=>{state.invert=!state.invert;syncUI();schedule()});
 
-/* ---------- image ---------- */
-$('#pick').addEventListener('click', ()=> $('#file').click());
-$('#file').addEventListener('change', e=>{
-  const f = e.target.files[0]; if(!f) return;
-  const url = URL.createObjectURL(f);
-  const im = new Image();
-  im.onload = ()=>{ srcImg = im; $('#export').disabled = false; render(); URL.revokeObjectURL(url); };
-  im.onerror = ()=>{ $('#stage').innerHTML = '<div class="empty">Image illisible</div>'; URL.revokeObjectURL(url); };
-  im.src = url;
+document.querySelector('.tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
+});
+
+/* ---------- import ---------- */
+const RAW=['DNG','ARW','CR2','CR3','NEF','ORF','RAF','RW2','SRW','PEF','3FR','IIQ'];
+
+/* chaîne de décodage : on tente le décodeur le plus capable en premier */
+async function decode(f){
+  if(window.createImageBitmap){
+    // applique aussi l'orientation EXIF, que les photos de téléphone portent presque toujours
+    try{ return await createImageBitmap(f,{imageOrientation:'from-image'}); }catch(e){}
+    try{ return await createImageBitmap(f); }catch(e){}
+  }
+  return await new Promise((res,rej)=>{
+    const url=URL.createObjectURL(f), im=new Image();
+    im.onload=()=>{URL.revokeObjectURL(url);res(im)};
+    im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('decode'))};
+    im.src=url;
+  });
+}
+
+async function loadFile(f){
+  if(!f) return;
+  $('#stage').innerHTML='<div class="empty">Décodage…</div>';
+  try{
+    srcImg=await decode(f);
+    $('#export').disabled=false;
+    render();
+  }catch(e){
+    const ext=(f.name.split('.').pop()||'').toUpperCase();
+    $('#stage').innerHTML='<div class="empty">'+(RAW.includes(ext)
+      ? 'Format RAW ('+ext+')<br>illisible par le navigateur.<br>Exporte en JPEG ou HEIC d\'abord.'
+      : 'Format '+(ext||'inconnu')+' non pris en charge<br>par ce navigateur.')+'</div>';
+  }
+}
+$('#pick').addEventListener('click',()=>$('#file').click());
+$('#file').addEventListener('change',e=>loadFile(e.target.files[0]));
+$('#fileCam').addEventListener('change',e=>loadFile(e.target.files[0]));
+
+/* coller depuis le presse-papier, et glisser-déposer sur ordinateur */
+window.addEventListener('paste',e=>{
+  const items=(e.clipboardData&&e.clipboardData.items)||[];
+  for(let i=0;i<items.length;i++){
+    if(items[i].type.indexOf('image/')===0){ loadFile(items[i].getAsFile()); return; }
+  }
+});
+['dragenter','dragover','drop'].forEach(t=>
+  window.addEventListener(t,e=>{e.preventDefault();e.stopPropagation()}));
+window.addEventListener('drop',e=>{
+  const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+  if(f) loadFile(f);
+});
+
+/* ---------- appareil photo en direct ---------- */
+const video=$('#video');
+let stream=null, camOn=false, facing='environment';
+
+async function openCam(){
+  $('#cam').classList.add('on');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:facing,width:{ideal:1440},height:{ideal:1440}},audio:false
+    });
+    video.srcObject=stream;
+    await video.play();
+    camOn=true;
+    loop();
+  }catch(err){
+    // pas de flux disponible : on retombe sur l'appareil natif
+    closeCam();
+    $('#fileCam').click();
+  }
+}
+function closeCam(){
+  camOn=false;
+  $('#cam').classList.remove('on');
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+}
+function loop(){
+  if(!camOn) return;
+  if(video.videoWidth){
+    const r=process(video,video.videoWidth,video.videoHeight,facing==='user');
+    paint(camView,r);
+    setGauge(r.pct);
+  }
+  requestAnimationFrame(loop);
+}
+$('#shoot').addEventListener('click',()=>{
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) openCam();
+  else $('#fileCam').click();
+});
+$('#camClose').addEventListener('click',closeCam);
+$('#camFlip').addEventListener('click',async ()=>{
+  facing = facing==='environment' ? 'user' : 'environment';
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  camOn=false;
+  await openCam();
+});
+$('#shutter').addEventListener('click',()=>{
+  if(!video.videoWidth) return;
+  const c=document.createElement('canvas');
+  c.width=video.videoWidth; c.height=video.videoHeight;
+  const cx=c.getContext('2d');
+  if(facing==='user'){cx.translate(c.width,0);cx.scale(-1,1)}
+  cx.drawImage(video,0,0);
+  const im=new Image();
+  im.onload=()=>{srcImg=im;$('#export').disabled=false;closeCam();render()};
+  im.src=c.toDataURL('image/png');
 });
 
 /* ---------- export ---------- */
-$('#export').addEventListener('click', ()=>{
-  $('#outImg').src = out.toDataURL('image/png');
+const coarse = window.matchMedia('(pointer:coarse)').matches;
+$('#export').addEventListener('click',()=>{
+  $('#outImg').src=out.toDataURL('image/png');
+  $('#sheetMsg').textContent = coarse
+    ? 'Appui long sur l\'image → Enregistrer dans Photos'
+    : 'Clic droit sur l\'image → Enregistrer l\'image sous…';
   $('#sheet').classList.add('on');
 });
-$('#closeSheet').addEventListener('click', ()=> $('#sheet').classList.remove('on'));
+$('#closeSheet').addEventListener('click',()=>$('#sheet').classList.remove('on'));
 
 /* ---------- presets ---------- */
-const KEY = 'trame:presets';
-let presets = [];
-async function loadPresets(){
-  presets = (await store.get(KEY)) || [];
-  drawPresets();
-}
+const KEY='trame:presets';
+const FACTORY=[
+  {name:'Ciel & architecture',s:{w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs'}},
+  {name:'Portrait grain fin', s:{w:384,sky:20,white:200,floor:42,gamma:62,sharp:8, blur:1,invert:false,algo:'fs'}},
+  {name:'Silhouette',         s:{w:384,sky:30,white:190,floor:0, gamma:90,sharp:10,blur:1,invert:false,algo:'seuil'}}
+];
+let presets=FACTORY.slice();
 function drawPresets(){
-  const box = $('#presets');
-  if(!presets.length){
-    box.innerHTML = '<span class="hint" style="margin:0">Aucun réglage enregistré pour le moment.</span>';
-    return;
-  }
-  box.innerHTML = '';
+  const box=$('#presets'); box.innerHTML='';
   presets.forEach((p,i)=>{
-    const c = document.createElement('div'); c.className='chip';
-    const b = document.createElement('b'); b.textContent = p.name;
-    b.addEventListener('click', ()=>{ Object.assign(state, p.s); syncUI(); schedule(); });
-    const x = document.createElement('i'); x.textContent='×';
-    x.addEventListener('click', async ()=>{ presets.splice(i,1); await store.set(KEY,presets); drawPresets(); });
-    c.append(b,x); box.appendChild(c);
+    const c=document.createElement('div');c.className='chip';
+    const b=document.createElement('b');b.textContent=p.name;
+    b.addEventListener('click',()=>{Object.assign(state,p.s);syncUI();schedule()});
+    const x=document.createElement('i');x.textContent='×';
+    x.addEventListener('click',async()=>{presets.splice(i,1);await store.set(KEY,presets);drawPresets()});
+    c.append(b,x);box.appendChild(c);
   });
 }
-$('#save').addEventListener('click', async ()=>{
-  const name = prompt('Nom du réglage');
+$('#save').addEventListener('click',async()=>{
+  const name=prompt('Nom du réglage');
   if(!name) return;
-  presets.push({name:name.slice(0,22), s:{...state}});
-  await store.set(KEY, presets);
+  presets.push({name:name.slice(0,22),s:{...state}});
+  await store.set(KEY,presets);
   drawPresets();
 });
+(async()=>{
+  const saved=await store.get(KEY);
+  if(saved&&saved.length) presets=saved;
+  drawPresets();
+})();
 
-/* presets d'usine, sur la base de nos essais */
-presets = [
-  {name:'Ciel & architecture', s:{w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs'}},
-  {name:'Portrait grain fin',  s:{w:384,sky:20,white:200,floor:42,gamma:62,sharp:8, blur:1,invert:false,algo:'fs'}},
-  {name:'Silhouette',          s:{w:384,sky:30,white:190,floor:0, gamma:90,sharp:10,blur:1,invert:false,algo:'seuil'}}
-];
-drawPresets();
-loadPresets().then(()=>{ if(!presets.length) drawPresets(); });
 syncUI();
-
 if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
 </script>
