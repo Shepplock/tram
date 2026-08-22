@@ -401,10 +401,18 @@ video{display:none}
     <button data-a="atkinson" aria-pressed="false"><canvas></canvas><span>Atkinson</span></button>
     <button data-a="stucki" aria-pressed="false"><canvas></canvas><span>Stucki</span></button>
     <button data-a="jarvis" aria-pressed="false"><canvas></canvas><span>Jarvis</span></button>
-    <button data-a="bayer" aria-pressed="false"><canvas></canvas><span>Bayer</span></button>
+    <button data-a="bayer" aria-pressed="false"><canvas></canvas><span>Bayer 4</span></button>
+    <button data-a="bayer8" aria-pressed="false"><canvas></canvas><span>Bayer 8</span></button>
     <button data-a="seuil" aria-pressed="false"><canvas></canvas><span>Seuil</span></button>
     <button data-a="glyphes" aria-pressed="false"><canvas></canvas><span>Glyphes</span></button>
     <button data-a="ascii" aria-pressed="false"><canvas></canvas><span>ASCII</span></button>
+  </div>
+
+  <div class="row" id="scaleRow" style="margin-top:24px">
+    <label>Pixel size<i id="vScale">1</i></label>
+    <input type="range" id="scale" min="1" max="6" value="1">
+    <div class="hint">Tramage calculé à résolution réduite puis dilaté. Grossit le grain — et casse
+      les motifs réguliers de Bayer, qui se lisent en tartan à 1 pixel.</div>
   </div>
 
   <div class="row" id="cellRow" style="display:none;margin-top:24px">
@@ -538,6 +546,10 @@ video{display:none}
       <label>Gamma<i id="cvGamma">0.80</i></label>
       <input type="range" id="cGamma" min="40" max="160" value="80">
     </div>
+    <div class="row" id="cScaleRow">
+      <label>Pixel size<i id="cvScale">1</i></label>
+      <input type="range" id="cScale" min="1" max="6" value="1">
+    </div>
     <div class="row" id="cCellRow" style="display:none">
       <label>Cell size<i id="cvCell">8</i></label>
       <input type="range" id="cCell" min="4" max="24" value="8">
@@ -594,7 +606,7 @@ video{display:none}
 
 
 const $ = s => document.querySelector(s);
-const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8};
+const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1};
 
 const work = document.createElement('canvas');
 const wctx = work.getContext('2d',{willReadFrequently:true});
@@ -707,13 +719,19 @@ const KERNELS={
           [-2,2,1/48],[-1,2,3/48],[0,2,5/48],[1,2,3/48],[2,2,1/48]]
 };
 const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+const BAYER8=[
+  [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
+  [12,44, 4,36,14,46, 6,38],[60,28,52,20,62,30,54,22],
+  [ 3,35,11,43, 1,33, 9,41],[51,19,59,27,49,17,57,25],
+  [15,47, 7,39,13,45, 5,37],[63,31,55,23,61,29,53,21]];
 
 function dither(g,w,h,algo){
   const o=new Uint8ClampedArray(w*h);
   if(algo==='seuil'){for(let i=0;i<g.length;i++)o[i]=g[i]>127?255:0;return o}
-  if(algo==='bayer'){
+  if(algo==='bayer'||algo==='bayer8'){
+    const M = algo==='bayer8'?BAYER8:BAYER, n=M.length, m=n-1, d=n*n;
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-      const t=(BAYER[y&3][x&3]+.5)/16*255;
+      const t=(M[y&m][x&m]+.5)/d*255;
       o[y*w+x]=g[y*w+x]>t?255:0;
     }
     return o;
@@ -733,26 +751,40 @@ function dither(g,w,h,algo){
 
 /* dessine une source dans le canvas de travail puis renvoie {bits,w,h,pct} */
 /* o = {source, crop:{x,y,w,h} en pixels source, st, mirror} */
+/* dilate un rendu 1 bit en plus proche voisin : la trame grossit sans se deformer */
+function expand(bits,dW,dH,W,H){
+  const o=new Uint8ClampedArray(W*H);
+  const kx=dW/W, ky=dH/H;
+  for(let y=0;y<H;y++){
+    const row=Math.min(dH-1,(y*ky)|0)*dW, out=y*W;
+    for(let x=0;x<W;x++) o[out+x]=bits[row+Math.min(dW-1,(x*kx)|0)];
+  }
+  return o;
+}
 function process(o){
   const st = o.st || state, c = o.crop, W = st.w;
   const H = Math.max(1, Math.round(c.h * W / c.w));
-  work.width=W; work.height=H;
+  /* les glyphes ont deja leur taille de cellule : pas de dilatation en plus */
+  const grid = st.algo==='glyphes'||st.algo==='ascii';
+  const S = grid ? 1 : Math.max(1, st.scale||1);
+  const dW = Math.max(1, Math.round(W/S)), dH = Math.max(1, Math.round(H/S));
+  work.width=dW; work.height=dH;
   wctx.save();
   wctx.imageSmoothingEnabled=true; wctx.imageSmoothingQuality='high';
-  if(o.mirror){ wctx.translate(W,0); wctx.scale(-1,1); }
-  wctx.drawImage(o.source, c.x,c.y,c.w,c.h, 0,0,W,H);
+  if(o.mirror){ wctx.translate(dW,0); wctx.scale(-1,1); }
+  wctx.drawImage(o.source, c.x,c.y,c.w,c.h, 0,0,dW,dH);
   wctx.restore();
-  const d=wctx.getImageData(0,0,W,H).data;
+  const d=wctx.getImageData(0,0,dW,dH).data;
 
   const t=st.sky/100;
   const wr=.299+(.10-.299)*t, wg=.587+(.25-.587)*t, wb=.114+(.65-.114)*t;
-  let g=new Float32Array(W*H);
+  let g=new Float32Array(dW*dH);
   for(let i=0,p=0;i<g.length;i++,p+=4) g[i]=wr*d[p]+wg*d[p+1]+wb*d[p+2];
 
-  if(st.blur>0) g=boxBlur(g,W,H,st.blur);
+  if(st.blur>0) g=boxBlur(g,dW,dH,st.blur);
   const amt=st.sharp/10;
   if(amt>0){
-    const bl=boxBlur(g,W,H,1);
+    const bl=boxBlur(g,dW,dH,1);
     for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*amt));
   }
   const bp=20, wp=Math.max(30, st.white + device.comp), gm=st.gamma/100, fl=st.floor/100;
@@ -764,10 +796,11 @@ function process(o){
     if(st.invert) v=1-v;
     g[i]=(fl+v*(1-fl))*255;
   }
-  const bits=(st.algo==='glyphes'||st.algo==='ascii') ? glyphRender(g,W,H,st) : dither(g,W,H,st.algo);
+  const small = grid ? glyphRender(g,dW,dH,st) : dither(g,dW,dH,st.algo);
   let black=0;
-  for(let i=0;i<bits.length;i++) if(bits[i]<128) black++;
-  return {bits,W,H,pct:black/bits.length*100,blank:blank/g.length*100};
+  for(let i=0;i<small.length;i++) if(small[i]<128) black++;
+  const bits = S===1 ? small : expand(small,dW,dH,W,H);
+  return {bits,W,H,pct:black/small.length*100,blank:blank/g.length*100};
 }
 
 function paint(canvas,r){
@@ -1036,7 +1069,8 @@ const MIRROR=[
   {k:'white', el:'cWhite', lab:'cvWhite'},
   {k:'sky',   el:'cSky',   lab:'cvSky'},
   {k:'gamma', el:'cGamma', lab:'cvGamma', fmt:v=>(v/100).toFixed(2)},
-  {k:'cell',  el:'cCell',  lab:'cvCell'}
+  {k:'cell',  el:'cCell',  lab:'cvCell'},
+  {k:'scale', el:'cScale', lab:'cvScale'}
 ];
 function bindMirror(){
   MIRROR.forEach(m=>{
@@ -1066,7 +1100,11 @@ function syncUI(){
   $('#cellRow').style.display = grid ? 'block' : 'none';
   $('#cell').value = c.cell||8;
   $('#vCell').textContent = c.cell||8;
+  $('#scaleRow').style.display = grid ? 'none' : 'block';
+  $('#scale').value = c.scale||1;
+  $('#vScale').textContent = c.scale||1;
   const cr=$('#cCellRow'); if(cr) cr.style.display = grid ? 'block' : 'none';
+  const sr=$('#cScaleRow'); if(sr) sr.style.display = grid ? 'none' : 'block';
   MIRROR.forEach(m=>{
     const e=$('#'+m.el), l=$('#'+m.lab), v=c[m.k];
     if(e) e.value=v;
@@ -1080,6 +1118,9 @@ $('#algoSeg').addEventListener('click',e=>{
 });
 $('#cell').addEventListener('input',e=>{
   cfg().cell=+e.target.value;$('#vCell').textContent=e.target.value;schedule();
+});
+$('#scale').addEventListener('input',e=>{
+  cfg().scale=+e.target.value;$('#vScale').textContent=e.target.value;schedule();scheduleSwatches(true);
 });
 $('#invert').addEventListener('click',()=>{cfg().invert=!cfg().invert;syncUI();schedule()});
 
@@ -1707,16 +1748,17 @@ if(hashToState(location.hash)){ syncUI(); PREFS.forEach(showPref); schedule(); }
 
 /* ================= vignettes de style ================= */
 /* un degrade noir->blanc rendu par chaque algorithme, a sa taille reelle */
-function swatch(algo,W,H,cell){
-  const g=new Float32Array(W*H);
-  for(let y=0;y<H;y++){
-    const row=y*W;
-    for(let x=0;x<W;x++) g[row+x]=(x/(W-1))*255;
+function swatch(algo,W,H,cell,sc){
+  const grid=algo==='glyphes'||algo==='ascii';
+  const S=grid?1:Math.max(1,sc||1);
+  const dW=Math.max(1,Math.round(W/S)), dH=Math.max(1,Math.round(H/S));
+  const g=new Float32Array(dW*dH);
+  for(let y=0;y<dH;y++){
+    const row=y*dW;
+    for(let x=0;x<dW;x++) g[row+x]=(x/Math.max(1,dW-1))*255;
   }
-  const bits=(algo==='glyphes'||algo==='ascii')
-    ? glyphRender(g,W,H,{algo,cell})
-    : dither(g,W,H,algo);
-  return {bits,W,H};
+  const small=grid ? glyphRender(g,dW,dH,{algo,cell}) : dither(g,dW,dH,algo);
+  return {bits: S===1?small:expand(small,dW,dH,W,H), W, H};
 }
 let swW=0;
 function drawSwatches(force){
@@ -1725,10 +1767,10 @@ function drawSwatches(force){
   const w=Math.max(40, Math.round(btns[0].clientWidth-4));
   if(!force && w===swW) return;
   swW=w;
-  const h=52, cell=cfg().cell||8;
+  const h=52, cell=cfg().cell||8, sc=cfg().scale||1;
   btns.forEach(b=>{
     const c=b.querySelector('canvas');
-    if(c) paint(c, swatch(b.dataset.a, w, h, cell));
+    if(c) paint(c, swatch(b.dataset.a, w, h, cell, sc));
   });
 }
 let swT;
@@ -1744,7 +1786,8 @@ requestAnimationFrame(()=>drawSwatches(true));
 
 /* ================= slider thumbs, shaped like the console keys ================= */
 const THUMB={sky:'S',white:'W',floor:'F',gamma:'G',sharp:'D',blur:'B',
-             cell:'C',comp:'C',gap:'G',mtop:'T',mbot:'B'};
+             cell:'C',scale:'P',comp:'C',gap:'G',mtop:'T',mbot:'B',
+             cSky:'S',cWhite:'W',cGamma:'G',cCell:'C',cScale:'P'};
 function thumbURI(ch,fill,ring,ink){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">'
     +'<circle cx="18" cy="18" r="15.5" fill="'+fill+'" stroke="'+ring+'" stroke-width="2.5"/>'
