@@ -1,4 +1,4 @@
-const CACHE = 'trame-v4';
+const CACHE = 'trame-v5';
 const FILES = ['./', './index.html'];
 
 self.addEventListener('install', e => {
