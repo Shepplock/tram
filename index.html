@@ -1084,6 +1084,7 @@ function bindMirror(){
   $('#tuneBtn').addEventListener('click',()=>{
     const on=$('#camTune').classList.toggle('open');
     $('#tuneBtn').setAttribute('aria-pressed',on);
+    if(on && typeof paintThumbs==='function') paintThumbs();  // filet : le tiroir peut s'ouvrir tôt
   });
 }
 
