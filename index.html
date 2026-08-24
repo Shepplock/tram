@@ -406,6 +406,21 @@ video{display:none}
     <button data-a="seuil" aria-pressed="false"><canvas></canvas><span>Seuil</span></button>
     <button data-a="glyphes" aria-pressed="false"><canvas></canvas><span>Glyphes</span></button>
     <button data-a="ascii" aria-pressed="false"><canvas></canvas><span>ASCII</span></button>
+    <button data-a="gbcam" aria-pressed="false"><canvas></canvas><span>GB Cam</span></button>
+  </div>
+
+  <div id="gbRow" style="display:none;margin-top:24px">
+    <div class="row">
+      <label>Edge<i id="vEdge">1.6</i></label>
+      <input type="range" id="edge" min="0" max="35" value="16">
+    </div>
+    <div class="row">
+      <label>Vignette<i id="vVig">30</i></label>
+      <input type="range" id="vig" min="0" max="60" value="30">
+    </div>
+    <div class="hint">128 px de large en quatre niveaux de gris, chaque pixel rendu par un bloc
+      de 3×3 points — 128×3 fait exactement 384. Style le plus gourmand en encre : allège avec
+      le point blanc si la couverture dépasse 25 %.</div>
   </div>
 
   <div class="row" id="scaleRow" style="margin-top:24px">
@@ -606,7 +621,7 @@ video{display:none}
 
 
 const $ = s => document.querySelector(s);
-const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1};
+const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1,edge:16,vig:30};
 
 const work = document.createElement('canvas');
 const wctx = work.getContext('2d',{willReadFrequently:true});
@@ -763,6 +778,7 @@ function expand(bits,dW,dH,W,H){
 }
 function process(o){
   const st = o.st || state, c = o.crop, W = st.w;
+  if(st.algo==='gbcam') return gbcamRender(o,st);
   const H = Math.max(1, Math.round(c.h * W / c.w));
   /* les glyphes ont deja leur taille de cellule : pas de dilatation en plus */
   const grid = st.algo==='glyphes'||st.algo==='ascii';
@@ -973,6 +989,89 @@ function glyphRender(g,W,H,st){
   return bits;
 }
 
+
+/* ================= GB Cam =================
+   Le capteur de 1998 sortait du 128 px de large en QUATRE niveaux de gris.
+   Chaque pixel devient un bloc de n×n points : 128×3 = 384, la largeur du ticket. */
+const FILL3=[[0,6,4],[5,2,7],[3,8,1]];                     // ordre de remplissage 3×3
+const FILL4=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+const GBW=128;
+
+function gbBlock(n){
+  if(n===3) return {m:FILL3, counts:[9,4,2,0]};            // niveaux : plein, 4, 2, vide
+  if(n===4) return {m:FILL4, counts:[16,7,3,0]};
+  const m=[], t=n*n;
+  for(let y=0;y<n;y++){ m.push([]); for(let x=0;x<n;x++) m[y].push((x*7+y*5)%t); }
+  return {m, counts:[t, Math.round(t*0.44), Math.round(t*0.20), 0]};
+}
+
+/* quantifie en 4 niveaux avec trame ordonnée, puis dilate en blocs */
+function gbQuant(g,gw,gh,n){
+  const {m,counts}=gbBlock(n);
+  const W=gw*n, H=gh*n;
+  const bits=new Uint8ClampedArray(W*H).fill(255);
+  for(let y=0;y<gh;y++){
+    for(let x=0;x<gw;x++){
+      const t=(BAYER[y&3][x&3]+0.5)/16-0.5;                // évite les aplats dans les dégradés
+      let q=Math.floor(g[y*gw+x]/255*3 + t + 0.5);
+      q = q<0?0 : q>3?3 : q;
+      const k=counts[q];
+      if(!k) continue;
+      for(let dy=0;dy<n;dy++){
+        const row=(y*n+dy)*W;
+        for(let dx=0;dx<n;dx++) if(m[dy][dx]<k) bits[row+x*n+dx]=0;
+      }
+    }
+  }
+  let black=0;
+  for(let i=0;i<bits.length;i++) if(bits[i]<128) black++;
+  return {bits,W,H,pct:black/bits.length*100};
+}
+
+function gbcamRender(o,st){
+  const c=o.crop;
+  const n=Math.max(2, Math.floor((st.w||384)/GBW));
+  const gw=GBW, gh=Math.max(8, Math.round(c.h*gw/c.w));
+  work.width=gw; work.height=gh;
+  wctx.save();
+  wctx.imageSmoothingEnabled=true; wctx.imageSmoothingQuality='high';
+  if(o.mirror){ wctx.translate(gw,0); wctx.scale(-1,1); }
+  wctx.drawImage(o.source, c.x,c.y,c.w,c.h, 0,0,gw,gh);
+  wctx.restore();
+  const d=wctx.getImageData(0,0,gw,gh).data;
+  let g=new Float32Array(gw*gh);
+  for(let i=0,p=0;i<g.length;i++,p+=4) g[i]=.299*d[p]+.587*d[p+1]+.114*d[p+2];
+
+  /* contours durs : le capteur faisait une convolution analogique */
+  const edge=(st.edge==null?16:st.edge)/10;
+  if(edge>0){
+    const bl=boxBlur(g,gw,gh,1);
+    for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*edge));
+  }
+  /* vignetage optique */
+  const vg=(st.vig==null?30:st.vig)/100;
+  if(vg>0){
+    const cx=gw/2, cy=gh/2;
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+      const r=Math.hypot((x-cx)/cx,(y-cy)/cy)-0.45;
+      if(r>0) g[y*gw+x]*= Math.max(0, 1-vg*Math.pow(r,1.5)*2);
+    }
+  }
+  /* mêmes leviers tonals que les autres styles, pour pouvoir alléger */
+  const wp=Math.max(30,(st.white||180)+device.comp), gm=(st.gamma||80)/100;
+  let blank=0;
+  for(let i=0;i<g.length;i++){
+    let v=Math.max(0,Math.min(1,(g[i]-20)/Math.max(wp-20,1)));
+    if(g[i]>=wp) blank++;
+    v=Math.pow(v,gm);
+    if(st.invert) v=1-v;
+    g[i]=v*255;
+  }
+  const r=gbQuant(g,gw,gh,n);
+  r.blank=blank/g.length*100;
+  return r;
+}
+
 /* ---------- source, rotation, recadrage ---------- */
 function itemSource(b){
   if(!b.rot) return b.src;
@@ -1101,7 +1200,13 @@ function syncUI(){
   $('#cellRow').style.display = grid ? 'block' : 'none';
   $('#cell').value = c.cell||8;
   $('#vCell').textContent = c.cell||8;
-  $('#scaleRow').style.display = grid ? 'none' : 'block';
+  const gb = c.algo==='gbcam';
+  $('#gbRow').style.display = gb ? 'block' : 'none';
+  $('#edge').value=c.edge==null?16:c.edge;
+  $('#vEdge').textContent=((c.edge==null?16:c.edge)/10).toFixed(1);
+  $('#vig').value=c.vig==null?30:c.vig;
+  $('#vVig').textContent=c.vig==null?30:c.vig;
+  $('#scaleRow').style.display = (grid||gb) ? 'none' : 'block';
   $('#scale').value = c.scale||1;
   $('#vScale').textContent = c.scale||1;
   const cr=$('#cCellRow'); if(cr) cr.style.display = grid ? 'block' : 'none';
@@ -1119,6 +1224,14 @@ $('#algoSeg').addEventListener('click',e=>{
 });
 $('#cell').addEventListener('input',e=>{
   cfg().cell=+e.target.value;$('#vCell').textContent=e.target.value;schedule();
+});
+['edge','vig'].forEach(k=>{
+  const el=$('#'+k); if(!el) return;
+  el.addEventListener('input',ev=>{
+    cfg()[k]=+ev.target.value;
+    $('#v'+k[0].toUpperCase()+k.slice(1)).textContent = k==='edge' ? (+ev.target.value/10).toFixed(1) : ev.target.value;
+    schedule();
+  });
 });
 $('#scale').addEventListener('input',e=>{
   cfg().scale=+e.target.value;$('#vScale').textContent=e.target.value;schedule();scheduleSwatches(true);
@@ -1758,6 +1871,13 @@ function swatch(algo,W,H,cell,sc){
     const row=y*dW;
     for(let x=0;x<dW;x++) g[row+x]=(x/Math.max(1,dW-1))*255;
   }
+  if(algo==='gbcam'){
+    const n=Math.max(2,Math.round(H/14)), gw=Math.max(8,Math.round(W/n)), gh=Math.max(4,Math.round(H/n));
+    const gg=new Float32Array(gw*gh);
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++) gg[y*gw+x]=(x/Math.max(1,gw-1))*255;
+    const q=gbQuant(gg,gw,gh,n);
+    return {bits:expand(q.bits,q.W,q.H,W,H), W, H};
+  }
   const small=grid ? glyphRender(g,dW,dH,{algo,cell}) : dither(g,dW,dH,algo);
   return {bits: S===1?small:expand(small,dW,dH,W,H), W, H};
 }
@@ -1787,7 +1907,7 @@ requestAnimationFrame(()=>drawSwatches(true));
 
 /* ================= slider thumbs, shaped like the console keys ================= */
 const THUMB={sky:'S',white:'W',floor:'F',gamma:'G',sharp:'D',blur:'B',
-             cell:'C',scale:'P',comp:'C',gap:'G',mtop:'T',mbot:'B',
+             cell:'C',scale:'P',edge:'E',vig:'V',comp:'C',gap:'G',mtop:'T',mbot:'B',
              cSky:'S',cWhite:'W',cGamma:'G',cCell:'C',cScale:'P'};
 function thumbURI(ch,fill,ring,ink){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">'
