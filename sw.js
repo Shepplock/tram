@@ -1,5 +1,7 @@
-const CACHE = 'printpak-v30';
+const CACHE = 'printpak-v32';
 const FILES = ['./', './index.html'];
+// icônes et manifeste volontairement absents : addAll() est tout-ou-rien,
+// un fichier manquant ferait échouer l'ensemble du cache hors ligne.
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

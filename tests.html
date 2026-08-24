@@ -1,0 +1,284 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print Pak — engine tests</title>
+<style>
+  body{margin:0;padding:20px;background:#14120E;color:#C5C0B4;
+       font:13px/1.6 ui-monospace,"SF Mono",Menlo,monospace}
+  h1{font-size:13px;letter-spacing:.3em;text-transform:uppercase;margin:0 0 4px}
+  .sub{color:#7E7869;font-size:11px;margin-bottom:18px}
+  .case{padding:6px 0;border-bottom:1px solid #2B2B26}
+  .ok::before{content:"PASS  ";color:#8BAC0F}
+  .ko::before{content:"FAIL  ";color:#C7415A}
+  .ko{color:#C7415A}
+  .note{color:#7E7869;padding-left:6em;font-size:11px}
+  #sum{margin-top:18px;padding:12px;border:2px solid #7E7869;font-weight:700;letter-spacing:.1em}
+  #sum.green{border-color:#8BAC0F;color:#8BAC0F}
+  #sum.red{border-color:#C7415A;color:#C7415A}
+</style>
+
+<h1>Print Pak — engine tests</h1>
+<div class="sub">
+  Le bloc &lt;script id="engine"&gt; est extrait de index.html puis exécuté ici.
+  Les tests portent donc sur le code réellement livré, jamais sur une copie.
+</div>
+<div id="out"></div>
+<div id="sum">Chargement…</div>
+
+<script>
+const out = document.getElementById('out');
+let pass = 0, fail = 0;
+
+function check(name, fn) {
+  let ok = false, note = '';
+  try {
+    const r = fn();
+    if (r === true || r === undefined) ok = true;
+    else { note = String(r); }
+  } catch (e) {
+    note = e.message;
+  }
+  ok ? pass++ : fail++;
+  const d = document.createElement('div');
+  d.className = 'case ' + (ok ? 'ok' : 'ko');
+  d.textContent = name;
+  out.appendChild(d);
+  if (note) {
+    const n = document.createElement('div');
+    n.className = 'note';
+    n.textContent = note;
+    out.appendChild(n);
+  }
+}
+
+// Compte les pixels encrés d'un résultat 1 bit.
+const ink = bits => {
+  let k = 0;
+  for (let i = 0; i < bits.length; i++) if (bits[i] < 128) k++;
+  return k / bits.length;
+};
+const flat = (w, h, v) => new Float32Array(w * h).fill(v);
+const near = (a, b, tol) => Math.abs(a - b) <= tol
+  ? true
+  : `attendu ${b.toFixed(3)} ±${tol}, obtenu ${a.toFixed(3)}`;
+
+fetch('index.html')
+  .then(r => r.text())
+  .then(html => {
+    const a = html.indexOf('<script id="engine">');
+    if (a < 0) throw new Error('bloc engine introuvable dans index.html');
+    const src = html.slice(html.indexOf('>', a) + 1, html.indexOf('<' + '/script>', a));
+    // Le moteur est un script classique : on l'évalue dans une fonction et on
+    // récupère ce dont les tests ont besoin.
+    const E = new Function(src + `; return {
+      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp
+    };`)();
+    run(E);
+  })
+  .catch(e => {
+    document.getElementById('sum').className = 'red';
+    document.getElementById('sum').textContent = 'ERREUR DE CHARGEMENT — ' + e.message;
+  });
+
+function run(E) {
+
+  /* ---------- flou ---------- */
+
+  check('boxBlur rayon 0 rend la source inchangée', () => {
+    const g = flat(8, 8, 100);
+    return E.boxBlur(g, 8, 8, 0) === g || 'un nouveau tableau a été alloué';
+  });
+
+  check('boxBlur conserve une zone uniforme', () => {
+    const o = E.boxBlur(flat(16, 16, 128), 16, 16, 2);
+    let mn = Infinity, mx = -Infinity;
+    for (const v of o) { mn = Math.min(mn, v); mx = Math.max(mx, v); }
+    return near(mx - mn, 0, 1e-6);
+  });
+
+  check('boxBlur ne produit ni NaN ni débordement sur les bords', () => {
+    const g = new Float32Array(32 * 8);
+    for (let i = 0; i < g.length; i++) g[i] = (i % 32) * 8;
+    for (const r of [1, 2, 3]) {
+      for (const v of E.boxBlur(g, 32, 8, r)) {
+        if (!isFinite(v) || v < 0 || v > 255) return `rayon ${r} sort de la plage`;
+      }
+    }
+    return true;
+  });
+
+  /* ---------- tramage ---------- */
+
+  ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8'].forEach(algo => {
+    check(`${algo} : un aplat à 25 % de gris rend ~75 % d'encre`, () => {
+      const b = E.dither(flat(48, 48, 255 * 0.25), 48, 48, algo);
+      // Atkinson perd un quart de l'erreur par construction : il éclaircit.
+      return near(ink(b), 0.75, algo === 'atkinson' ? 0.16 : 0.05);
+    });
+  });
+
+  check('seuil ne rend que du noir ou du blanc pur, sans demi-teinte', () => {
+    const b = E.dither(flat(20, 20, 200), 20, 20, 'seuil');
+    return ink(b) === 0 || 'un gris clair devrait rester blanc';
+  });
+
+  check('bayer8 offre une gradation plus fine que bayer4', () => {
+    let d4 = new Set(), d8 = new Set();
+    for (let v = 0; v <= 255; v += 4) {
+      d4.add(Math.round(ink(E.dither(flat(16, 16, v), 16, 16, 'bayer')) * 1000));
+      d8.add(Math.round(ink(E.dither(flat(16, 16, v), 16, 16, 'bayer8')) * 1000));
+    }
+    return d8.size > d4.size || `bayer4 ${d4.size} niveaux, bayer8 ${d8.size}`;
+  });
+
+  check('le blanc pur ne dépose aucun point, quel que soit l\u2019algorithme', () => {
+    for (const a of ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8']) {
+      if (ink(E.dither(flat(24, 24, 255), 24, 24, a)) !== 0) return `${a} salit le blanc`;
+    }
+    return true;
+  });
+
+  /* ---------- dilatation ---------- */
+
+  check('expand double les dimensions sans changer la densité', () => {
+    const w = 20, h = 12;
+    const src = E.dither(flat(w, h, 128), w, h, 'fs');
+    const big = E.expand(src, w, h, w * 2, h * 2);
+    return big.length === w * 2 * h * 2 && near(ink(big), ink(src), 0.02);
+  });
+
+  check('expand recopie fidèlement en plus proche voisin', () => {
+    const src = new Uint8ClampedArray([0, 255, 255, 0]);
+    const big = E.expand(src, 2, 2, 4, 4);
+    const want = [0, 0, 255, 255, 0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 0, 0];
+    for (let i = 0; i < want.length; i++) if (big[i] !== want[i]) return `écart à l'indice ${i}`;
+    return true;
+  });
+
+  /* ---------- GB Cam ---------- */
+
+  check('gbBlock rend les quatre densités attendues en 3×3', () => {
+    const b = E.gbBlock(3);
+    const pct = b.counts.map(k => Math.round(100 * k / 9));
+    return String(pct) === '100,44,22,0' || `obtenu ${pct}`;
+  });
+
+  check('gbQuant respecte la largeur : 128 pixels × 3 font 384', () => {
+    const r = E.gbQuant(flat(128, 40, 128), 128, 40, 3);
+    return (r.W === 384 && r.H === 120) || `obtenu ${r.W}×${r.H}`;
+  });
+
+  check('gbQuant : noir plein donne 100 %, blanc donne 0 %', () => {
+    const noir = E.gbQuant(flat(32, 8, 0), 32, 8, 3).pct;
+    const blanc = E.gbQuant(flat(32, 8, 255), 32, 8, 3).pct;
+    return (noir === 100 && blanc === 0) || `noir ${noir}%, blanc ${blanc}%`;
+  });
+
+  /* ---------- chaîne complète ---------- */
+
+  const srcCanvas = (() => {
+    const c = document.createElement('canvas');
+    c.width = 240; c.height = 180;
+    const x = c.getContext('2d');
+    const grad = x.createLinearGradient(0, 0, 240, 0);
+    grad.addColorStop(0, '#000'); grad.addColorStop(1, '#fff');
+    x.fillStyle = grad; x.fillRect(0, 0, 240, 180);
+    return c;
+  })();
+  const base = { w: 384, sky: 65, white: 180, floor: 40, gamma: 80, sharp: 14, blur: 0,
+                 invert: false, algo: 'fs', cell: 8, scale: 1, edge: 16, vig: 30 };
+  const call = over => E.process({
+    source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 }, st: { ...base, ...over }
+  });
+
+  check('process rend la largeur de papier demandée', () => {
+    const r = call({});
+    return (r.W === 384 && r.H === 288) || `obtenu ${r.W}×${r.H}`;
+  });
+
+  check('abaisser le point blanc éclaircit toujours le résultat', () => {
+    const a = call({ white: 240 }).pct, b = call({ white: 120 }).pct;
+    return b < a || `point blanc 240 → ${a.toFixed(1)}%, 120 → ${b.toFixed(1)}%`;
+  });
+
+  check('le papier vierge garanti ne contient aucun point', () => {
+    // Propriété centrale de l'app : au-dessus du point blanc, rien ne peut s'imprimer.
+    const r = call({ white: 150, clip: true });
+    if (!r.clipHi) return 'masque de clipping absent';
+    for (let i = 0; i < r.bits.length; i++) {
+      if (r.clipHi[i] && r.bits[i] < 128) return `point trouvé en zone clippée (indice ${i})`;
+    }
+    return true;
+  });
+
+  check('l\u2019échelle grossit le grain sans dériver en densité', () => {
+    const a = call({ scale: 1 }).pct, b = call({ scale: 3 }).pct;
+    return near(b, a, 6);
+  });
+
+  check('inverser échange approximativement encre et papier', () => {
+    const a = call({ floor: 0, white: 200 }).pct;
+    const b = call({ floor: 0, white: 200, invert: true }).pct;
+    return near(a + b, 100, 12);
+  });
+
+  check('ASCII ignore le plancher, qui l\u2019étouffait', () => {
+    // Régression : le plancher divisait par deux la couverture d'un style
+    // dont le caractère le plus dense ne dépose déjà que la moitié d'encre.
+    const a = call({ algo: 'ascii', cell: 12, floor: 0 }).pct;
+    const b = call({ algo: 'ascii', cell: 12, floor: 60 }).pct;
+    return near(a, b, 0.5);
+  });
+
+  check('les styles à grille ignorent l\u2019échelle', () => {
+    const a = call({ algo: 'glyphes', cell: 8, scale: 1 }).pct;
+    const b = call({ algo: 'glyphes', cell: 8, scale: 4 }).pct;
+    return near(a, b, 0.5);
+  });
+
+  check('GB Cam sort bien sur un multiple de 128', () => {
+    const r = call({ algo: 'gbcam' });
+    return (r.W % 128 === 0) || `largeur ${r.W}`;
+  });
+
+  check('les dix styles produisent tous une image non vide', () => {
+    for (const a of ['fs','atkinson','stucki','jarvis','bayer','bayer8','seuil','glyphes','ascii','gbcam']) {
+      const r = call({ algo: a, white: 210 });
+      if (!r.bits.length) return `${a} ne rend rien`;
+      if (r.pct <= 0 || r.pct >= 100) return `${a} rend ${r.pct.toFixed(1)}%`;
+    }
+    return true;
+  });
+
+  /* ---------- calibration ---------- */
+
+  check('une machine neutre ne demande aucune compensation', () => {
+    return E.solveComp(50) === 0 || `obtenu ${E.solveComp(50)}`;
+  });
+
+  check('une machine qui assombrit demande une compensation négative', () => {
+    return E.solveComp(30) < 0 || `obtenu ${E.solveComp(30)}`;
+  });
+
+  check('la compensation varie de façon monotone', () => {
+    let prev = -Infinity;
+    for (const v of [20, 30, 40, 50, 60, 70, 80]) {
+      const c = E.solveComp(v);
+      if (c < prev) return `rupture au palier ${v}`;
+      prev = c;
+    }
+    return true;
+  });
+
+  check('refCoverage décroît quand le point blanc baisse', () => {
+    return E.refCoverage(120) < E.refCoverage(220) || 'relation inversée';
+  });
+
+  /* ---------- bilan ---------- */
+
+  const sum = document.getElementById('sum');
+  sum.className = fail ? 'red' : 'green';
+  sum.textContent = fail
+    ? `${fail} ÉCHEC${fail > 1 ? 'S' : ''} SUR ${pass + fail}`
+    : `${pass} TESTS PASSÉS`;
+}
+</script>

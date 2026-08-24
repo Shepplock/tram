@@ -3,6 +3,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon.png">
+<!-- Android : le manifeste déclenche la vraie installation plutôt qu'un simple
+     raccourci, et fournit l'icône maskable que le système recadre à sa forme. -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C5C0B4">
 <title>Print Pak</title>
 <style>
 [data-skin="dmg"]{
@@ -127,6 +131,7 @@ button.empty{background:transparent;border:0;width:100%;font-family:var(--mono);
   border:2px solid var(--shell-line);box-shadow:2px 2px 0 rgba(0,0,0,.25);cursor:pointer}
 .lotbar button[aria-pressed=true]{background:var(--screen);color:var(--ink);border-color:var(--ink);
   box-shadow:inset 0 0 0 2px var(--ink)}
+.lotbar button:disabled{opacity:.35;box-shadow:none}
 
 /* ---------- onglets ---------- */
 .tabs{display:flex;position:sticky;top:0;z-index:15;padding:0 13px;background:var(--shell)}
@@ -315,10 +320,23 @@ input[type=file]{display:none}
 video{display:none}
 </style>
 
+<!-- Démarrage. Le mot-symbole descend par crans plutôt qu'en glissement :
+     c'est la saccade qui évoque la console, autant que le carillon. -->
 <div id="boot"><button id="bootSkip">Skip</button><div id="bootLogo">Print Pak</div></div>
 
+<!-- ==========================================================================
+     PRINT PAK — préparation d'images pour imprimante thermique à ticket.
+     Fichier unique par choix : le déploiement se fait à la main sur GitHub
+     Pages, parfois depuis un téléphone. Moins de fichiers, moins d'oublis,
+     et un cache hors ligne qui ne casse pas pour une ressource manquante.
+     Le JavaScript est scindé en deux blocs en bas de page : « engine »,
+     purement calculatoire et testé par tests.html, puis « app ».
+     ========================================================================== -->
 <div class="wrap" id="wrap">
 
+<!-- Barre de titre : nom, support courant, et les cinq coques.
+     Les pastilles sont des carrés de couleur plutôt que des libellés,
+     faute de place sur un écran de téléphone. -->
 <div class="brand">
   <b>Print Pak</b>
   <span id="brandInfo">58 mm · 384 px</span>
@@ -331,12 +349,19 @@ video{display:none}
   </div>
 </div>
 
+<!-- Écran. Épinglé en haut pour rester visible pendant qu'on tire un
+     curseur : régler sans voir le résultat n'a aucun intérêt.
+     Le puits d'image reste clair dans les cinq coques — l'image est du noir
+     sur papier blanc, et un cadre teinté fausserait le jugement des densités. -->
 <div class="pin">
   <div class="lcd">
     <div class="well">
       <div id="stage"><div class="empty">No image</div></div>
       <div id="liveTools"><button id="liveFlip">Flip</button></div>
     </div>
+    <!-- Jauge de couverture. Douze blocs, les trois du milieu marquant la
+         zone imprimable visée. Sous elle, la part de l'image clippée en blanc
+         pur, donc mathématiquement incapable de contenir un point. -->
     <div class="meter">
       <div class="lab"><span>Coverage</span><span class="cov" id="cov">—<small>%</small></span></div>
       <div class="blocks" id="blocks">
@@ -346,7 +371,11 @@ video{display:none}
       <div class="blank" id="blank"></div>
     </div>
     <div class="film" id="film"></div>
+    <!-- Barre d'outils sous l'écran. Annuler et Rétablir sont permanents ;
+         les trois commandes de lot n'apparaissent qu'à partir de deux images. -->
     <div class="lotbar" id="lotbar">
+      <button id="undo" disabled>Undo</button>
+      <button id="redo" disabled>Redo</button>
       <button id="detach">Own settings</button>
       <button id="toall">Apply to all</button>
       <button id="skip">Exclude</button>
@@ -354,6 +383,8 @@ video{display:none}
   </div>
 </div>
 
+<!-- Quatre onglets. Tone règle la photo, Style choisit l'algorithme,
+     Settings couvre presets et calibration, Export la mise en page papier. -->
 <div class="tabs" role="tablist">
   <button role="tab" aria-selected="true" data-p="ton">Tone</button>
   <button role="tab" aria-selected="false" data-p="trame">Style</button>
@@ -361,6 +392,8 @@ video{display:none}
   <button role="tab" aria-selected="false" data-p="exp">Export</button>
 </div>
 
+<!-- TONE — tout ce qui précède le tramage. C'est ici que se joue la
+     couverture finale, bien plus que dans le choix de l'algorithme. -->
 <div class="panel on" id="p-ton">
   <div class="row">
     <label>Sky<i id="vSky">65</i></label>
@@ -391,9 +424,17 @@ video{display:none}
     <input type="range" id="blur" min="0" max="3" value="0">
     <div class="hint">Raise only for dark, noisy photos.</div>
   </div>
-  <div class="seg"><button id="invert" aria-pressed="false">Invert</button></div>
+  <div class="seg">
+    <button id="invert" aria-pressed="false">Invert</button>
+    <button id="clipBtn" aria-pressed="false">Show clipping</button>
+  </div>
+  <div class="hint">Clipping tints the preview only: blue where the tone has hit pure white and
+    no dot can appear, red where it has bottomed out into solid black. Exports are never tinted.</div>
 </div>
 
+<!-- STYLE — dix algorithmes. Chaque carte montre le même dégradé rendu
+     par son propre algorithme, calculé à la largeur exacte d'affichage :
+     une vignette mise à l'échelle mentirait sur son motif. -->
 <div class="panel" id="p-trame">
   <div class="legend">Algorithm</div>
   <div class="seg" id="algoSeg">
@@ -438,6 +479,7 @@ video{display:none}
 
 </div>
 
+<!-- EXPORT — propriétés du papier et mise en page de la sortie. -->
 <div class="panel" id="p-exp">
   <div class="legend">Paper width</div>
   <div class="seg" id="widthSeg">
@@ -474,6 +516,7 @@ video{display:none}
   <button class="btn" id="export2" style="margin-top:20px">Export</button>
 </div>
 
+<!-- SETTINGS — presets, calibration de l'imprimante, partage, formats. -->
 <div class="panel" id="p-pre">
   <div class="legend">Saved</div>
   <div class="preset-list" id="presets"></div>
@@ -485,7 +528,7 @@ video{display:none}
   <button class="btn ghost" id="chart">Print the chart</button>
   <div class="row" style="margin-top:16px">
     <label>Compensation<i id="vComp">0</i></label>
-    <input type="range" id="comp" min="-40" max="40" value="0">
+    <input type="range" id="comp" min="-60" max="60" value="0">
     <div class="hint">Shifts the white point across every frame at once. Negative lightens.</div>
   </div>
 
@@ -512,6 +555,17 @@ video{display:none}
   </div>
   <button class="btn ghost" id="ptest">Generate test strip</button>
 
+  <!-- Boucle de calibration : convertit une lecture faite sur le papier
+       imprimé en une valeur de compensation, sans calcul de tête. -->
+  <div class="row" style="margin-top:20px">
+    <label>Mid-grey step<i id="vMid">50</i></label>
+    <input type="range" id="mid" min="5" max="95" step="5" value="50">
+    <div class="hint">On the printed strip, find the step that looks like an even mid-grey.
+      Enter its label here.</div>
+  </div>
+  <div class="hint" id="calibOut" style="margin-bottom:12px">Neutral printer — no compensation needed.</div>
+  <button class="btn ghost" id="applyCalib">Apply calibration</button>
+
   <div class="hint" style="margin-top:22px;text-align:center">
     Everything is computed on your device.<br>No image is ever uploaded.
   </div>
@@ -519,6 +573,8 @@ video{display:none}
 
 </div>
 
+<!-- Barre d'action, à portée du pouce. Photo et Video forment une paire :
+     toucher l'un choisit le mode et ouvre la caméra dans la foulée. -->
 <div class="bar">
   <div class="mode" id="mode">
     <button data-c="photo" aria-pressed="true">Photo</button>
@@ -533,6 +589,9 @@ video{display:none}
 <input type="file" id="fileCam" accept="image/*" capture="environment">
 <video id="video" playsinline muted autoplay></video>
 
+<!-- Écran caméra plein écran. N'affiche que les commandes du mode courant.
+     Le tiroir Tune remonte les réglages qui changent le rendu à la volée,
+     tout en laissant l'aperçu visible au-dessus. -->
 <div id="cam">
   <div id="camHead">
     <span id="camTop">Live dithered preview</span>
@@ -587,6 +646,8 @@ video{display:none}
   </div>
 </div>
 
+<!-- Recadrage. Le cadre et la rotation sont propres à chaque image et
+     suivent sa vignette dans le lot. -->
 <div id="crop">
   <div id="cropTop">Crop</div>
   <div id="cropStage"><div id="cropBox">
@@ -601,6 +662,8 @@ video{display:none}
   </div>
 </div>
 
+<!-- Lecture de l'enregistrement. La sauvegarde passe par la feuille de
+     partage système : sur iOS, c'est le seul chemin vers Photos. -->
 <div id="vid"><div class="box">
   <video id="vidPlay" controls loop playsinline></video>
   <p id="vidInfo"></p>
@@ -608,6 +671,8 @@ video{display:none}
   <button class="btn ghost" id="vidClose" style="margin-top:8px">Close</button>
 </div></div>
 
+<!-- Feuille d'export. L'image y est présentée en PNG, à enregistrer par
+     appui long sur mobile ou clic droit sur ordinateur. -->
 <div id="sheet"><div class="box">
   <img id="outImg" alt="Result">
   <p id="sheetMsg">Press and hold the image → Save to Photos</p>
@@ -620,93 +685,15 @@ video{display:none}
   <button class="btn ghost" id="closeSheet">Close</button>
 </div></div>
 
-<script>(function(){
-  try{
-    const k=localStorage.getItem('trame:skin');
-    if(k) document.documentElement.setAttribute('data-skin', JSON.parse(k));
-  }catch(e){}
-})();
-
-
-const $ = s => document.querySelector(s);
-const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1,edge:16,vig:30};
-
+<script id="engine">/* ==========================================================================
+   MOTEUR — traitement d'image pur.
+   Aucune dépendance à l'interface : ni sélecteur, ni écouteur, ni stockage.
+   Tout entre par les arguments et ressort par la valeur de retour, ce qui
+   rend ce bloc exécutable et vérifiable seul (voir tests.html).
+   ========================================================================== */
 const work = document.createElement('canvas');
 const wctx = work.getContext('2d',{willReadFrequently:true});
-const out = document.createElement('canvas');
-out.id = 'preview';
-const camView = $('#camView');
 
-/* ---------- stockage ---------- */
-const mem = {};
-const hasLS = (()=>{try{localStorage.setItem('__t','1');localStorage.removeItem('__t');return true}catch(e){return false}})();
-const store = {
-  async get(k){
-    if(hasLS){const r=localStorage.getItem(k);return r?JSON.parse(r):null}
-    try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null}catch(e){return mem[k]??null}
-  },
-  async set(k,v){
-    if(hasLS){localStorage.setItem(k,JSON.stringify(v));return}
-    try{await window.storage.set(k,JSON.stringify(v))}catch(e){mem[k]=v}
-  }
-};
-
-/* ---------- réglages machine : ils décrivent l'imprimante et le papier,
-   pas une photo. Un seul objet, une seule clé de stockage. ---------- */
-const device = { comp:0, gap:16, mtop:0, mbot:0, num:false, outMode:'bande', fps:8, capture:'photo' };
-
-const PREFS=[
-  {k:'comp', el:'comp', lab:'vComp', fmt:v=>(v>0?'+':'')+v, kind:'num', after:()=>schedule()},
-  {k:'gap',  el:'gap',  lab:'vGap',  kind:'num'},
-  {k:'mtop', el:'mtop', lab:'vMtop', kind:'num'},
-  {k:'mbot', el:'mbot', lab:'vMbot', kind:'num'},
-  {k:'num',  el:'numBtn', kind:'press'},
-  {k:'outMode', el:'outMode', kind:'seg'},
-  {k:'fps', el:'camFps', kind:'seg', attr:'f', cast:Number},
-  {k:'capture', el:'mode', kind:'seg', attr:'c'}
-];
-function showPref(p){
-  const e=$('#'+p.el), v=device[p.k];
-  if(!e) return;
-  if(p.kind==='num'){ e.value=v; const l=$('#'+p.lab); if(l) l.textContent=p.fmt?p.fmt(v):v; }
-  else if(p.kind==='press') e.setAttribute('aria-pressed', !!v);
-  else { const a=p.attr||'m';
-    e.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset[a])===String(v))); }
-}
-const saveDevice=()=>store.set('pp:device', device);
-function bindPrefs(){
-  PREFS.forEach(p=>{
-    const e=$('#'+p.el); if(!e) return;
-    if(p.kind==='num') e.addEventListener('input',ev=>{
-      device[p.k]=+ev.target.value; showPref(p); saveDevice();
-      p.after? p.after() : updateExpInfo();
-    });
-    else if(p.kind==='press') e.addEventListener('click',()=>{
-      device[p.k]=!device[p.k]; showPref(p); saveDevice(); updateExpInfo();
-    });
-    else e.addEventListener('click',ev=>{
-      const b=ev.target.closest('button'); if(!b) return;
-      const raw=b.dataset[p.attr||'m'];
-      device[p.k]=p.cast?p.cast(raw):raw;
-      showPref(p); saveDevice(); updateExpInfo();
-    });
-  });
-}
-async function loadDevice(){
-  let d=await store.get('pp:device');
-  if(!d){                                   // reprise des anciennes clés séparées
-    d={};
-    const old={comp:'trame:comp',gap:'trame:gap',mtop:'trame:mtop',mbot:'trame:mbot',
-               num:'trame:num',outMode:'trame:outmode'};
-    for(const k in old){ const v=await store.get(old[k]); if(v!==null&&v!==undefined) d[k]=v; }
-  }
-  Object.assign(device, d);
-  PREFS.forEach(showPref);
-  applyCapture();
-  updateExpInfo();
-}
-
-/* ---------- traitement ---------- */
 function boxBlur(g,w,h,r){
   if(r<=0) return g;
   const t=new Float32Array(g.length), o=new Float32Array(g.length);
@@ -785,7 +772,7 @@ function expand(bits,dW,dH,W,H){
   return o;
 }
 function process(o){
-  const st = o.st || state, c = o.crop, W = st.w;
+  const st = o.st, c = o.crop, W = st.w;   // les réglages viennent toujours de l'appelant
   if(st.algo==='gbcam') return gbcamRender(o,st);
   const H = Math.max(1, Math.round(c.h * W / c.w));
   /* les glyphes ont deja leur taille de cellule : pas de dilatation en plus */
@@ -811,7 +798,8 @@ function process(o){
     const bl=boxBlur(g,dW,dH,1);
     for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*amt));
   }
-  const bp=20, wp=Math.max(30, st.white + device.comp), gm=st.gamma/100;
+  const bp=20, wp=Math.max(30, st.white), gm=st.gamma/100;
+  const raw = st.clip ? Float32Array.from(g) : null;   // copie avant mappage, pour les masques
   /* le caractère le plus dense ne dépose que ~50% d'encre : lui appliquer en plus
      le plancher divisait la couverture par deux et rendait l'ASCII quasi blanc */
   const fl = st.algo==='ascii' ? 0 : st.floor/100;
@@ -827,55 +815,18 @@ function process(o){
   let black=0;
   for(let i=0;i<small.length;i++) if(small[i]<128) black++;
   const bits = S===1 ? small : expand(small,dW,dH,W,H);
-  return {bits,W,H,pct:black/small.length*100,blank:blank/g.length*100};
-}
-
-function paint(canvas,r){
-  canvas.width=r.W; canvas.height=r.H;
-  const ctx=canvas.getContext('2d');
-  const img=ctx.createImageData(r.W,r.H);
-  for(let i=0;i<r.bits.length;i++){
-    const p=i*4, v=r.bits[i];
-    img.data[p]=img.data[p+1]=img.data[p+2]=v;
-    img.data[p+3]=255;
+  const r={bits,W,H,pct:black/small.length*100,blank:blank/g.length*100};
+  /* Aperçu de clipping : on renvoie où la tonalité a saturé, avant tramage.
+     Deux masques seulement, calculés à la demande pour ne rien coûter sinon. */
+  if(st.clip && raw){
+    const hi=new Uint8ClampedArray(dW*dH), lo=new Uint8ClampedArray(dW*dH);
+    for(let i=0;i<raw.length;i++){ if(raw[i]>=wp) hi[i]=1; else if(raw[i]<=bp) lo[i]=1; }
+    r.clipHi = S===1?hi:expand(hi,dW,dH,W,H);
+    r.clipLo = S===1?lo:expand(lo,dW,dH,W,H);
   }
-  ctx.putImageData(img,0,0);
+  return r;
 }
 
-function setGauge(pct,blank){
-  const b=$('#blank');
-  if(b) b.innerHTML = (blank==null||state.invert) ? '' :
-    'Blank paper guaranteed: <b>'+blank.toFixed(0)+'%</b> — no dot can occur there.';
-  setGaugeInner(pct);
-}
-function setGaugeInner(pct){
-  $('#cov').innerHTML=pct.toFixed(1)+'<small>%</small>';
-  const cc=$('#camCov'); if(cc) cc.textContent=pct.toFixed(1)+'%';
-  const n=Math.min(12,Math.round(pct/4));
-  document.querySelectorAll('#blocks i').forEach((el,i)=>{
-    el.className = i<n ? 'f' : ((i>=3&&i<=5) ? 't' : '');
-  });
-  const v=$('#verdict');
-  if(pct>30){v.className='verdict warn';v.textContent='Far too dense — the paper will buckle.'}
-  else if(pct>22){v.className='verdict warn';v.textContent='A little dark. Lower the white point.'}
-  else if(pct>=12){v.className='verdict';v.textContent='In the zone. Check the sky is blank.'}
-  else if(pct>=6){v.className='verdict warn';v.textContent='Very light — the subject may vanish.'}
-  else{v.className='verdict warn';v.textContent='Almost nothing will print.'}
-}
-
-let queued=false;
-function schedule(){if(!queued){queued=true;requestAnimationFrame(()=>{queued=false;render()})}}
-function render(){
-  const b=batch[cur];
-  if(!b){ camOn ? showLive() : showStart(); return; }
-  if(!camFull && camOn) stopStream();
-  $('#liveTools').style.display='none';
-  const r=renderItem(b,cfg());
-  paint(out,r);
-  const st=$('#stage');
-  if(st.firstChild!==out){st.innerHTML='';st.appendChild(out)}
-  setGauge(r.pct,r.blank);
-}
 
 
 /* ================= glyphes & ascii ================= */
@@ -1069,7 +1020,7 @@ function gbcamRender(o,st){
     }
   }
   /* mêmes leviers tonals que les autres styles, pour pouvoir alléger */
-  const wp=Math.max(30,(st.white||180)+device.comp), gm=(st.gamma||80)/100;
+  const wp=Math.max(30,(st.white||180)), gm=(st.gamma||80)/100;
   let blank=0;
   for(let i=0;i<g.length;i++){
     let v=Math.max(0,Math.min(1,(g[i]-20)/Math.max(wp-20,1)));
@@ -1082,6 +1033,221 @@ function gbcamRender(o,st){
   r.blank=blank/g.length*100;
   return r;
 }
+
+
+
+
+/* --------------------------------------------------------------------------
+   Calibration. L'utilisateur imprime le mouchoir, repère le palier qui lui
+   paraît gris moyen, et nous en déduisons de combien la machine assombrit.
+   On résout par dichotomie sur un dégradé de référence plutôt que par une
+   formule : le pipeline réel décide, et le résultat suit ses non-linéarités.
+   -------------------------------------------------------------------------- */
+function refCoverage(white){
+  const W=120,H=90, g=new Float32Array(W*H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++) g[y*W+x]=(x/(W-1))*255;
+  const v=new Float32Array(W*H);
+  for(let i=0;i<g.length;i++){
+    const t=Math.max(0,Math.min(1,(g[i]-20)/Math.max(white-20,1)));
+    v[i]=(0.40+Math.pow(t,0.80)*0.60)*255;
+  }
+  const b=dither(v,W,H,'fs');
+  let k=0; for(let i=0;i<b.length;i++) if(b[i]<128) k++;
+  return k/b.length;
+}
+/* midStep = le palier du mouchoir qui paraît gris moyen à l'impression.
+   S'il vaut 50, la machine est neutre. Plus bas, elle assombrit. */
+function solveComp(midStep){
+  const ratio = 50 / Math.max(5, Math.min(95, midStep));   // >1 : elle assombrit
+  if(Math.abs(ratio-1) < 0.02) return 0;
+  const base = refCoverage(180);
+  const goal = base / ratio;
+  let lo=-60, hi=60;
+  for(let i=0;i<24;i++){
+    const mid=(lo+hi)/2;
+    if(refCoverage(180+mid) > goal) hi=mid; else lo=mid;
+  }
+  return Math.round((lo+hi)/2);
+}
+</script>
+
+<script id="app">
+/* ==========================================================================
+   APPLICATION — état, interface, périphériques, persistance.
+   S'appuie sur le moteur ci-dessus, jamais l'inverse.
+   ========================================================================== */
+(function(){
+  try{
+    const k=localStorage.getItem('trame:skin');
+    if(k) document.documentElement.setAttribute('data-skin', JSON.parse(k));
+  }catch(e){}
+})();
+
+
+const $ = s => document.querySelector(s);
+const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1,edge:16,vig:30};
+
+const out = document.createElement('canvas');
+out.id = 'preview';
+const camView = $('#camView');
+
+/* ---------- stockage ---------- */
+const mem = {};
+const hasLS = (()=>{try{localStorage.setItem('__t','1');localStorage.removeItem('__t');return true}catch(e){return false}})();
+const store = {
+  async get(k){
+    if(hasLS){const r=localStorage.getItem(k);return r?JSON.parse(r):null}
+    try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null}catch(e){return mem[k]??null}
+  },
+  async set(k,v){
+    if(hasLS){localStorage.setItem(k,JSON.stringify(v));return}
+    try{await window.storage.set(k,JSON.stringify(v))}catch(e){mem[k]=v}
+  }
+};
+
+/* ---------- réglages machine : ils décrivent l'imprimante et le papier,
+   pas une photo. Un seul objet, une seule clé de stockage. ---------- */
+const device = { comp:0, gap:16, mtop:0, mbot:0, num:false, outMode:'bande', fps:8, capture:'photo' };
+
+const PREFS=[
+  {k:'comp', el:'comp', lab:'vComp', fmt:v=>(v>0?'+':'')+v, kind:'num', after:()=>schedule()},
+  {k:'gap',  el:'gap',  lab:'vGap',  kind:'num'},
+  {k:'mtop', el:'mtop', lab:'vMtop', kind:'num'},
+  {k:'mbot', el:'mbot', lab:'vMbot', kind:'num'},
+  {k:'num',  el:'numBtn', kind:'press'},
+  {k:'outMode', el:'outMode', kind:'seg'},
+  {k:'fps', el:'camFps', kind:'seg', attr:'f', cast:Number},
+  {k:'capture', el:'mode', kind:'seg', attr:'c'}
+];
+function showPref(p){
+  const e=$('#'+p.el), v=device[p.k];
+  if(!e) return;
+  if(p.kind==='num'){ e.value=v; const l=$('#'+p.lab); if(l) l.textContent=p.fmt?p.fmt(v):v; }
+  else if(p.kind==='press') e.setAttribute('aria-pressed', !!v);
+  else { const a=p.attr||'m';
+    e.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset[a])===String(v))); }
+}
+const saveDevice=()=>store.set('pp:device', device);
+function bindPrefs(){
+  PREFS.forEach(p=>{
+    const e=$('#'+p.el); if(!e) return;
+    if(p.kind==='num') e.addEventListener('input',ev=>{
+      device[p.k]=+ev.target.value; showPref(p); saveDevice();
+      p.after? p.after() : updateExpInfo();
+    });
+    else if(p.kind==='press') e.addEventListener('click',()=>{
+      device[p.k]=!device[p.k]; showPref(p); saveDevice(); updateExpInfo();
+    });
+    else e.addEventListener('click',ev=>{
+      const b=ev.target.closest('button'); if(!b) return;
+      const raw=b.dataset[p.attr||'m'];
+      device[p.k]=p.cast?p.cast(raw):raw;
+      showPref(p); saveDevice(); updateExpInfo();
+    });
+  });
+}
+async function loadDevice(){
+  let d=await store.get('pp:device');
+  if(!d){                                   // reprise des anciennes clés séparées
+    d={};
+    const old={comp:'trame:comp',gap:'trame:gap',mtop:'trame:mtop',mbot:'trame:mbot',
+               num:'trame:num',outMode:'trame:outmode'};
+    for(const k in old){ const v=await store.get(old[k]); if(v!==null&&v!==undefined) d[k]=v; }
+  }
+  Object.assign(device, d);
+  PREFS.forEach(showPref);
+  applyCapture();
+  updateExpInfo();
+}
+
+/* ---------- traitement ---------- */
+/* Rend un résultat du moteur dans un canvas. Si les masques de clipping sont
+   présents, les zones saturées sont teintées — uniquement à l'aperçu, jamais
+   à l'export, puisque seul render() demande ces masques. */
+function paint(canvas,r){
+  canvas.width=r.W; canvas.height=r.H;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(r.W,r.H);
+  const hi=r.clipHi, lo=r.clipLo;
+  for(let i=0;i<r.bits.length;i++){
+    const p=i*4, v=r.bits[i];
+    if(hi && hi[i]){      img.data[p]=120; img.data[p+1]=190; img.data[p+2]=255; }
+    else if(lo && lo[i]){ img.data[p]=220; img.data[p+1]=60;  img.data[p+2]=60;  }
+    else { img.data[p]=img.data[p+1]=img.data[p+2]=v; }
+    img.data[p+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function setGauge(pct,blank){
+  const b=$('#blank');
+  if(b) b.innerHTML = (blank==null||state.invert) ? '' :
+    'Blank paper guaranteed: <b>'+blank.toFixed(0)+'%</b> — no dot can occur there.';
+  setGaugeInner(pct);
+}
+function setGaugeInner(pct){
+  $('#cov').innerHTML=pct.toFixed(1)+'<small>%</small>';
+  const cc=$('#camCov'); if(cc) cc.textContent=pct.toFixed(1)+'%';
+  const n=Math.min(12,Math.round(pct/4));
+  document.querySelectorAll('#blocks i').forEach((el,i)=>{
+    el.className = i<n ? 'f' : ((i>=3&&i<=5) ? 't' : '');
+  });
+  const v=$('#verdict');
+  if(pct>30){v.className='verdict warn';v.textContent='Far too dense — the paper will buckle.'}
+  else if(pct>22){v.className='verdict warn';v.textContent='A little dark. Lower the white point.'}
+  else if(pct>=12){v.className='verdict';v.textContent='In the zone. Check the sky is blank.'}
+  else if(pct>=6){v.className='verdict warn';v.textContent='Very light — the subject may vanish.'}
+  else{v.className='verdict warn';v.textContent='Almost nothing will print.'}
+}
+
+/* --------------------------------------------------------------------------
+   Historique. On mémorise l'état confirmé plutôt que chaque mouvement de
+   curseur : une rafale de réglages compte pour un seul pas d'annulation.
+   -------------------------------------------------------------------------- */
+let undoStack=[], redoStack=[], committed=null, undoT=null, clipOn=false;
+function snapshot(){
+  const b=batch[cur];
+  return {cur, own: b&&b.own?{...b.own}:null, state:{...state}};
+}
+function restore(s){
+  Object.assign(state, s.state);
+  if(batch[s.cur]) batch[s.cur].own = s.own ? {...s.own} : null;
+  if(s.cur<batch.length) cur=s.cur;
+  syncUI(); render(); drawFilm(); updateUndo();
+}
+function commit(){
+  clearTimeout(undoT);
+  undoT=setTimeout(()=>{
+    if(committed){
+      undoStack.push(committed);
+      if(undoStack.length>40) undoStack.shift();
+      redoStack.length=0;
+    }
+    committed=snapshot();
+    updateUndo();
+  },350);
+}
+function updateUndo(){
+  const u=$('#undo'), r=$('#redo');
+  if(u) u.disabled=!undoStack.length;
+  if(r) r.disabled=!redoStack.length;
+}
+
+let queued=false;
+function schedule(){
+  commit();if(!queued){queued=true;requestAnimationFrame(()=>{queued=false;render()})}}
+function render(){
+  const b=batch[cur];
+  if(!b){ camOn ? showLive() : showStart(); return; }
+  if(!camFull && camOn) stopStream();
+  $('#liveTools').style.display='none';
+  const r=renderItem(b,{...cfg(), clip:clipOn});
+  paint(out,r);
+  const st=$('#stage');
+  if(st.firstChild!==out){st.innerHTML='';st.appendChild(out)}
+  setGauge(r.pct,r.blank);
+}
+
 
 /* ---------- source, rotation, recadrage ---------- */
 function itemSource(b){
@@ -1102,9 +1268,13 @@ function cropPx(b){
   const s=itemSource(b), c=b.crop||{x:0,y:0,w:1,h:1};
   return {src:s, box:{x:c.x*s.width, y:c.y*s.height, w:c.w*s.width, h:c.h*s.height}};
 }
+/* La compensation décrit l'imprimante, pas l'image : on la replie dans le
+   point blanc avant d'entrer dans le moteur, qui reste ainsi sans état. */
+function eff(st){ return {...st, white: st.white + device.comp}; }
+
 function renderItem(b, st){
   const {src,box}=cropPx(b);
-  return process({source:src, crop:box, st});
+  return process({source:src, crop:box, st:eff(st)});
 }
 
 /* ---------- lot ---------- */
@@ -1124,10 +1294,11 @@ function shrink(bmp, max){
 }
 
 function drawFilm(){
-  const f=$('#film'), lb=$('#lotbar');
-  f.classList.toggle('on', batch.length>1);
-  lb.classList.toggle('on', batch.length>1);
-  if(batch.length<2){ f.innerHTML=''; return; }
+  const f=$('#film'), lb=$('#lotbar'), many=batch.length>1;
+  f.classList.toggle('on', many);
+  lb.classList.add('on');                       // annuler/rétablir restent toujours accessibles
+  ['detach','toall','skip'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display=many?'':'none'; });
+  if(!many){ f.innerHTML=''; return; }
   f.innerHTML='';
   batch.forEach((b,i)=>{
     const d=document.createElement('div');
@@ -1384,7 +1555,7 @@ function loop(){
   const gate = recording() ? 1000/device.fps : 0;   // en enregistrement, on calcule à la cadence choisie
   if(video.videoWidth && now-lastFrame >= gate){
     lastFrame=now;
-    const r=process({source:video, crop:{x:0,y:0,w:video.videoWidth,h:video.videoHeight}, mirror:facing==='user'});
+    const r=process({source:video, crop:{x:0,y:0,w:video.videoWidth,h:video.videoHeight}, mirror:facing==='user', st:eff(cfg())});
     const target = camFull ? camView : liveView;
     paint(target,r);
     setGauge(r.pct,r.blank);
@@ -1689,8 +1860,28 @@ $('#save').addEventListener('click',async()=>{
   ['touchend','touchcancel','mouseup','mouseleave'].forEach(t=>st.addEventListener(t,off));
 })();
 
+$('#undo').addEventListener('click',()=>{
+  if(!undoStack.length) return;
+  redoStack.push(snapshot());
+  restore(undoStack.pop());
+  committed=snapshot();
+});
+$('#redo').addEventListener('click',()=>{
+  if(!redoStack.length) return;
+  undoStack.push(snapshot());
+  restore(redoStack.pop());
+  committed=snapshot();
+});
+$('#clipBtn').addEventListener('click',()=>{
+  clipOn=!clipOn;
+  $('#clipBtn').setAttribute('aria-pressed',clipOn);
+  render();
+});
+
 bindPrefs();
 bindMirror();
+committed=snapshot();
+updateUndo();
 loadDevice();
 /* Safari exige souvent un geste avant d'ouvrir la caméra : si ça échoue, on propose un bouton */
 startStream().then(ok=>{ if(!batch.length) ok? showLive() : showStart(); });
@@ -1884,6 +2075,23 @@ function buildTest(){
   }
   return c;
 }
+/* Boucle de calibration : le mouchoir donne une mesure, ce curseur la convertit. */
+function previewCalib(){
+  const v=+$('#mid').value;
+  const comp=solveComp(v);
+  $('#vMid').textContent=v;
+  $('#calibOut').innerHTML = v===50
+    ? 'Neutral printer — no compensation needed.'
+    : 'Your printer runs <b>'+(v<50?'dark':'light')+'</b>. Suggested compensation: <b>'+(comp>0?'+':'')+comp+'</b>.';
+  return comp;
+}
+$('#mid').addEventListener('input',previewCalib);
+$('#applyCalib').addEventListener('click',()=>{
+  device.comp=previewCalib();
+  PREFS.forEach(showPref); saveDevice(); schedule();
+  $('#calibOut').innerHTML += '<br><b>Applied.</b>';
+});
+
 $('#ptest').addEventListener('click',()=>{
   lastList=[buildTest()]; outs=lastList; outI=0;
   $('#outMode').style.display='none';
