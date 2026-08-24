@@ -376,6 +376,7 @@ video{display:none}
     <div class="lotbar" id="lotbar">
       <button id="undo" disabled>Undo</button>
       <button id="redo" disabled>Redo</button>
+      <button id="discard">Discard</button>
       <button id="detach">Own settings</button>
       <button id="toall">Apply to all</button>
       <button id="skip">Exclude</button>
@@ -611,10 +612,12 @@ video{display:none}
       <button data-a="atkinson">Atkinson</button>
       <button data-a="stucki">Stucki</button>
       <button data-a="jarvis">Jarvis</button>
-      <button data-a="bayer">Bayer</button>
+      <button data-a="bayer">Bayer 4</button>
+      <button data-a="bayer8">Bayer 8</button>
       <button data-a="seuil">Threshold</button>
       <button data-a="glyphes">Glyphs</button>
       <button data-a="ascii">ASCII</button>
+      <button data-a="gbcam">GB Cam</button>
     </div>
     <div class="row" style="margin-top:14px">
       <label>White point<i id="cvWhite">180</i></label>
@@ -1298,6 +1301,7 @@ function drawFilm(){
   f.classList.toggle('on', many);
   lb.classList.add('on');                       // annuler/rétablir restent toujours accessibles
   ['detach','toall','skip'].forEach(id=>{ const e=$('#'+id); if(e) e.style.display=many?'':'none'; });
+  const dc=$('#discard'); if(dc) dc.style.display = batch.length?'':'none';
   if(!many){ f.innerHTML=''; return; }
   f.innerHTML='';
   batch.forEach((b,i)=>{
@@ -1396,7 +1400,7 @@ function syncUI(){
   $('#scale').value = Math.round(sc*10);
   $('#vScale').textContent = sc.toFixed(1);
   const cr=$('#cCellRow'); if(cr) cr.style.display = grid ? 'block' : 'none';
-  const sr=$('#cScaleRow'); if(sr) sr.style.display = grid ? 'none' : 'block';
+  const sr=$('#cScaleRow'); if(sr) sr.style.display = (grid||gb) ? 'none' : 'block';
   MIRROR.forEach(m=>{
     const e=$('#'+m.el), l=$('#'+m.lab), v=c[m.k];
     if(e) e.value = m.tenths ? Math.round(v*10) : v;
@@ -1501,6 +1505,32 @@ const video=$('#video');
 const liveView=document.createElement('canvas');
 liveView.id='liveView';
 let stream=null, camOn=false, camFull=false, facing='environment';
+const LIVE_FPS=15;          // cadence du viseur hors enregistrement
+const IDLE_MS=90000;        // extinction du viseur après inactivité
+let idleT=null, wasLive=false;
+
+/* Le viseur s'éteint tout seul si on l'oublie ouvert : c'est le poste de
+   consommation le plus lourd de l'app. */
+function armIdle(){
+  clearTimeout(idleT);
+  idleT=setTimeout(()=>{
+    if(camOn && !camFull && !recording() && !batch.length){ stopStream(); showStart(); }
+  }, IDLE_MS);
+}
+document.addEventListener('pointerdown',armIdle,{passive:true});
+
+/* Rien ne doit tourner quand la page passe en arrière-plan. */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    wasLive = camOn && !camFull && !recording();
+    stopRec();
+    if(!camFull) stopStream();
+  } else if(wasLive && !batch.length){
+    wasLive=false;
+    startStream().then(ok=>{ if(ok){ showLive(); armIdle(); } else showStart(); });
+  }
+});
+window.addEventListener('pagehide',()=>{ stopRec(); stopStream(); });
 
 /* le direct se peint dans le grand écran ou dans le viseur du haut, selon l'écran actif */
 async function startStream(){
@@ -1512,7 +1542,7 @@ async function startStream(){
     });
     video.srcObject=stream;
     await video.play();
-    camOn=true; loop(); return true;
+    camOn=true; armIdle(); loop(); return true;
   }catch(e){ camOn=false; return false; }
 }
 function stopStream(){
@@ -1552,7 +1582,10 @@ function closeCam(){
 function loop(){
   if(!camOn) return;
   const now=performance.now();
-  const gate = recording() ? 1000/device.fps : 0;   // en enregistrement, on calcule à la cadence choisie
+  /* Une image tramée coûte environ 20 ms de calcul. Laisser tourner à plein
+     régime saturerait un cœur pour rien : 15 images par seconde suffisent
+     largement pour cadrer, et divisent la consommation par quatre. */
+  const gate = recording() ? 1000/device.fps : 1000/LIVE_FPS;
   if(video.videoWidth && now-lastFrame >= gate){
     lastFrame=now;
     const r=process({source:video, crop:{x:0,y:0,w:video.videoWidth,h:video.videoHeight}, mirror:facing==='user', st:eff(cfg())});
@@ -1871,6 +1904,20 @@ $('#redo').addEventListener('click',()=>{
   undoStack.push(snapshot());
   restore(redoStack.pop());
   committed=snapshot();
+});
+/* Écarte l'image courante. Si le lot se vide, on rend la main au viseur
+   plutôt que de laisser un écran mort : quitter une édition doit ramener
+   là d'où l'on venait. */
+$('#discard').addEventListener('click',async ()=>{
+  if(!batch.length) return;
+  batch.splice(cur,1);
+  cur=Math.min(cur, batch.length-1);
+  undoStack.length=0; redoStack.length=0; updateUndo();
+  if(!batch.length){
+    $('#export').disabled=true; $('#cropBtn').disabled=true;
+    if(await startStream()) showLive(); else showStart();
+  } else { syncUI(); render(); }
+  drawFilm(); updateExpInfo();
 });
 $('#clipBtn').addEventListener('click',()=>{
   clipOn=!clipOn;
