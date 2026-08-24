@@ -418,16 +418,16 @@ video{display:none}
       <label>Vignette<i id="vVig">30</i></label>
       <input type="range" id="vig" min="0" max="60" value="30">
     </div>
-    <div class="hint">128 px de large en quatre niveaux de gris, chaque pixel rendu par un bloc
-      de 3×3 points — 128×3 fait exactement 384. Style le plus gourmand en encre : allège avec
-      le point blanc si la couverture dépasse 25 %.</div>
+    <div class="hint">128 px wide in four grey levels, each pixel rendered as a 3×3 block of dots —
+      128×3 lands exactly on 384. The heaviest style for ink: raise the white point if coverage
+      climbs past 25%.</div>
   </div>
 
   <div class="row" id="scaleRow" style="margin-top:24px">
-    <label>Pixel size<i id="vScale">1</i></label>
-    <input type="range" id="scale" min="1" max="6" value="1">
-    <div class="hint">Tramage calculé à résolution réduite puis dilaté. Grossit le grain — et casse
-      les motifs réguliers de Bayer, qui se lisent en tartan à 1 pixel.</div>
+    <label>Pixel size<i id="vScale">1.0</i></label>
+    <input type="range" id="scale" min="10" max="60" step="5" value="10">
+    <div class="hint">Dithered at reduced resolution, then expanded. Coarsens the grain. Half steps
+      break Bayer's lattice, which reads as tartan at whole values.</div>
   </div>
 
   <div class="row" id="cellRow" style="display:none;margin-top:24px">
@@ -504,6 +504,14 @@ video{display:none}
     RAW (DNG, ARW, CR2, NEF…) cannot be read: convert to JPEG first.<br><br>
     You can also paste an image from the clipboard, or drop one onto the page from a computer.
   </div>
+  <div class="legend" style="margin-top:28px">Print test</div>
+  <div class="hint" style="margin-bottom:12px">
+    A full ramp from 0 to 100% in 5% steps, plus 1–4 px lines. Shows where your head
+    saturates to solid black, where the lightest steps stop printing at all, and how fine
+    a line it can still resolve.
+  </div>
+  <button class="btn ghost" id="ptest">Generate test strip</button>
+
   <div class="hint" style="margin-top:22px;text-align:center">
     Everything is computed on your device.<br>No image is ever uploaded.
   </div>
@@ -562,8 +570,8 @@ video{display:none}
       <input type="range" id="cGamma" min="40" max="160" value="80">
     </div>
     <div class="row" id="cScaleRow">
-      <label>Pixel size<i id="cvScale">1</i></label>
-      <input type="range" id="cScale" min="1" max="6" value="1">
+      <label>Pixel size<i id="cvScale">1.0</i></label>
+      <input type="range" id="cScale" min="10" max="60" step="5" value="10">
     </div>
     <div class="row" id="cCellRow" style="display:none">
       <label>Cell size<i id="cvCell">8</i></label>
@@ -601,7 +609,7 @@ video{display:none}
 </div></div>
 
 <div id="sheet"><div class="box">
-  <img id="outImg" alt="Résultat">
+  <img id="outImg" alt="Result">
   <p id="sheetMsg">Press and hold the image → Save to Photos</p>
   <p id="outInfo" style="font-size:10px;color:var(--muted);margin:-6px 0 10px;letter-spacing:.05em"></p>
   <div id="sheetNav" style="display:none;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -803,7 +811,10 @@ function process(o){
     const bl=boxBlur(g,dW,dH,1);
     for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*amt));
   }
-  const bp=20, wp=Math.max(30, st.white + device.comp), gm=st.gamma/100, fl=st.floor/100;
+  const bp=20, wp=Math.max(30, st.white + device.comp), gm=st.gamma/100;
+  /* le caractère le plus dense ne dépose que ~50% d'encre : lui appliquer en plus
+     le plancher divisait la couverture par deux et rendait l'ASCII quasi blanc */
+  const fl = st.algo==='ascii' ? 0 : st.floor/100;
   let blank=0;
   for(let i=0;i<g.length;i++){
     if(!st.invert && g[i]>=wp) blank++;
@@ -919,13 +930,13 @@ function buildTiers(){
 const CHARS=" .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 let ramp=null, rampF=0;
 function buildRamp(F){
-  const adv=(()=>{gcan.width=8;gcan.height=8;gctx.font=F+'px '+MONO;return gctx.measureText('M').width})();
+  const adv=(()=>{gcan.width=8;gcan.height=8;gctx.font='bold '+F+'px '+MONO;return gctx.measureText('M').width})();
   const w=Math.max(2,Math.ceil(adv)), h=Math.max(2,Math.ceil(F*1.25));
   const out=[];
   for(const ch of CHARS){
     gcan.width=w;gcan.height=h;
     gctx.fillStyle='#fff';gctx.fillRect(0,0,w,h);
-    gctx.fillStyle='#000';gctx.font=F+'px '+MONO;gctx.textBaseline='alphabetic';
+    gctx.fillStyle='#000';gctx.font='bold '+F+'px '+MONO;gctx.textBaseline='alphabetic';
     gctx.fillText(ch,0,F*0.88);
     const d=gctx.getImageData(0,0,w,h).data;
     let s=0;for(let i=0;i<d.length;i+=4)s+=(255-d[i])/255;
@@ -938,7 +949,7 @@ function buildRamp(F){
 
 /* rend l'image en formes ou en caracteres, puis seuille en 1 bit */
 function glyphRender(g,W,H,st){
-  const C=Math.max(4,st.cell||8);
+  const C=Math.max(st.algo==='ascii'?9:4, st.cell||8);
   const c=document.createElement('canvas');
   c.width=W;c.height=H;
   const x=c.getContext('2d',{willReadFrequently:true});
@@ -955,7 +966,7 @@ function glyphRender(g,W,H,st){
   if(st.algo==='ascii'){
     if(!ramp||rampF!==C) buildRamp(C);
     const A=Math.max(2,ramp.adv), LH=Math.max(2,C*1.05);
-    x.font=C+'px '+MONO;x.textBaseline='alphabetic';
+    x.font='bold '+C+'px '+MONO;x.textBaseline='alphabetic';
     const lo=ramp.list[0].ink, hi=ramp.list[ramp.list.length-1].ink;
     for(let cy=0;cy*LH<H;cy++){
       for(let cx=0;cx*A<W;cx++){
@@ -991,7 +1002,7 @@ function glyphRender(g,W,H,st){
 
 
 /* ================= GB Cam =================
-   Le capteur de 1998 sortait du 128 px de large en QUATRE niveaux de gris.
+   Le capteur de 1998 sortait 128 px de large en QUATRE niveaux de gris — commentaire interne.
    Chaque pixel devient un bloc de n×n points : 128×3 = 384, la largeur du ticket. */
 const FILL3=[[0,6,4],[5,2,7],[3,8,1]];                     // ordre de remplissage 3×3
 const FILL4=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
@@ -1169,12 +1180,15 @@ const MIRROR=[
   {k:'sky',   el:'cSky',   lab:'cvSky'},
   {k:'gamma', el:'cGamma', lab:'cvGamma', fmt:v=>(v/100).toFixed(2)},
   {k:'cell',  el:'cCell',  lab:'cvCell'},
-  {k:'scale', el:'cScale', lab:'cvScale'}
+  {k:'scale', el:'cScale', lab:'cvScale', tenths:true}
 ];
 function bindMirror(){
   MIRROR.forEach(m=>{
     const e=$('#'+m.el); if(!e) return;
-    e.addEventListener('input',ev=>{ cfg()[m.k]=+ev.target.value; syncUI(); schedule(); });
+    e.addEventListener('input',ev=>{
+      cfg()[m.k] = m.tenths ? +ev.target.value/10 : +ev.target.value;
+      syncUI(); schedule();
+    });
   });
   $('#camStyles').addEventListener('click',ev=>{
     const b=ev.target.closest('button'); if(!b) return;
@@ -1207,14 +1221,15 @@ function syncUI(){
   $('#vig').value=c.vig==null?30:c.vig;
   $('#vVig').textContent=c.vig==null?30:c.vig;
   $('#scaleRow').style.display = (grid||gb) ? 'none' : 'block';
-  $('#scale').value = c.scale||1;
-  $('#vScale').textContent = c.scale||1;
+  const sc=c.scale||1;
+  $('#scale').value = Math.round(sc*10);
+  $('#vScale').textContent = sc.toFixed(1);
   const cr=$('#cCellRow'); if(cr) cr.style.display = grid ? 'block' : 'none';
   const sr=$('#cScaleRow'); if(sr) sr.style.display = grid ? 'none' : 'block';
   MIRROR.forEach(m=>{
     const e=$('#'+m.el), l=$('#'+m.lab), v=c[m.k];
-    if(e) e.value=v;
-    if(l) l.textContent = m.fmt? m.fmt(v) : v;
+    if(e) e.value = m.tenths ? Math.round(v*10) : v;
+    if(l) l.textContent = m.tenths ? Number(v).toFixed(1) : (m.fmt? m.fmt(v) : v);
   });
 }
 $('#widthSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cfg().w=+b.dataset.w;syncUI();schedule();updateExpInfo()});
@@ -1234,7 +1249,8 @@ $('#cell').addEventListener('input',e=>{
   });
 });
 $('#scale').addEventListener('input',e=>{
-  cfg().scale=+e.target.value;$('#vScale').textContent=e.target.value;schedule();scheduleSwatches(true);
+  const v=+e.target.value/10;                 // le curseur travaille en dixièmes
+  cfg().scale=v;$('#vScale').textContent=v.toFixed(1);schedule();scheduleSwatches(true);
 });
 $('#invert').addEventListener('click',()=>{cfg().invert=!cfg().invert;syncUI();schedule()});
 
@@ -1802,7 +1818,7 @@ function buildChart(){
     const val=255*(1-cv/100);
     const pw=W-LAB, g=new Float32Array(pw*PH).fill(val);
     const bits=dither(g,pw,PH,'fs');
-    const im=x.createImageData(pw,PH);
+    const im=x.createImageData(pw,PA);
     for(let k=0;k<bits.length;k++){
       const p=k*4; im.data[p]=im.data[p+1]=im.data[p+2]=bits[k]; im.data[p+3]=255;
     }
@@ -1818,6 +1834,61 @@ function buildChart(){
   x.fillText('CHART — coverage %', 4, 5);
   return c;
 }
+/* mouchoir de test complet : 0 à 100 %, plus un bloc de lignes fines
+   pour repérer la résolution réelle de la tête */
+function buildTest(){
+  const W=state.w, LAB=34, PA=22, GAP=4, PH=PA+GAP, TOP=24, LINES=64;
+  const steps=[]; for(let v=0;v<=100;v+=5) steps.push(v);
+  const c=document.createElement('canvas');
+  c.width=W; c.height=TOP + steps.length*PH + 14 + LINES;
+  const x=c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
+  x.fillStyle='#000'; x.textBaseline='top';
+  x.font='bold 13px ui-monospace,monospace';
+  x.fillText('PRINT TEST  0-100%  '+W+'px', 4, 5);
+
+  const pw=W-LAB;
+  steps.forEach((v,i)=>{
+    const y=TOP+i*PH;
+    x.font='bold 12px ui-monospace,monospace';
+    x.textBaseline='middle';
+    x.fillStyle='#000';
+    x.fillText(String(v).padStart(3,' '), 3, y+PA/2);
+    if(v===0) return;                       // 0 % : on laisse le papier nu
+    let bits;
+    if(v===100){ bits=new Uint8ClampedArray(pw*PA); }   // 100 % : aplat plein
+    else bits=dither(new Float32Array(pw*PA).fill(255*(1-v/100)), pw, PA, 'fs');
+    const im=x.createImageData(pw,PA);
+    for(let k=0;k<bits.length;k++){
+      const p=k*4; im.data[p]=im.data[p+1]=im.data[p+2]=bits[k]; im.data[p+3]=255;
+    }
+    x.putImageData(im, LAB, y);
+  });
+
+  /* lignes de 1 à 4 px : au-delà d'une certaine finesse la tête ne suit plus */
+  let y=TOP+steps.length*PH+12;
+  x.fillStyle='#000'; x.textBaseline='top';
+  x.font='bold 11px ui-monospace,monospace';
+  x.fillText('LINES 1-4px', 4, y);
+  y+=15;
+  let px=LAB;
+  for(const wdt of [1,2,3,4]){
+    for(let k=0;k<5;k++){ x.fillRect(px,y,wdt,20); px+=wdt*2; }
+    px+=8;
+  }
+  y+=26;
+  let py=y;
+  for(const wdt of [1,2,3,4]){
+    for(let k=0;k<3;k++){ x.fillRect(LAB,py,W-LAB-8,wdt); py+=wdt*2; }
+    py+=4;
+  }
+  return c;
+}
+$('#ptest').addEventListener('click',()=>{
+  lastList=[buildTest()]; outs=lastList; outI=0;
+  $('#outMode').style.display='none';
+  showOut();
+});
 $('#chart').addEventListener('click',()=>{
   lastList=[buildChart()]; outs=lastList; outI=0;
   $('#outMode').style.display='none';
@@ -1825,7 +1896,7 @@ $('#chart').addEventListener('click',()=>{
 });
 
 /* ================= réglages dans l'URL ================= */
-const URLKEYS={w:'w',sky:'s',white:'p',floor:'f',gamma:'g',sharp:'a',blur:'b',algo:'k',cell:'z'};
+const URLKEYS={w:'w',sky:'s',white:'p',floor:'f',gamma:'g',sharp:'a',blur:'b',algo:'k',cell:'z',scale:'y'};
 const DEVKEYS={comp:'c',gap:'e',mtop:'t',mbot:'m'};
 function stateToHash(){
   const o=[];
