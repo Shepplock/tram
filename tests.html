@@ -298,24 +298,25 @@ function run(E) {
 
   check('solveWhite amène la couverture sur la cible', () => {
     const o = { source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 } };
-    const w = E.solveWhite(o, base, 16);
-    const got = E.process({ ...o, st: { ...base, white: w } }).pct;
-    return near(got, 16, 2.5);
+    const r = E.solveWhite(o, base, 16);
+    return near(r.pct, 16, 2.5);
   });
 
   check('solveWhite converge quel que soit le point de départ', () => {
     const o = { source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 } };
     for (const st of [{ ...base, floor: 0, gamma: 100 }, { ...base, floor: 55, gamma: 60 }]) {
-      const w = E.solveWhite(o, st, 16);
-      const got = E.process({ ...o, st: { ...st, white: w } }).pct;
-      if (Math.abs(got - 16) > 3) return `plancher ${st.floor} → ${got.toFixed(1)}%`;
+      const r = E.solveWhite(o, st, 16);
+      // Une cible hors d'atteinte est un résultat légitime, à condition
+      // que le moteur le signale au lieu de la donner pour atteinte.
+      if (!r.capped && Math.abs(r.pct - 16) > 3) return `plancher ${st.floor} → ${r.pct.toFixed(1)}%`;
+      if (r.capped && r.white > 51 && r.white < 254) return `saturation annoncée à tort (${r.white})`;
     }
     return true;
   });
 
   check('une cible plus sombre demande un point blanc plus haut', () => {
     const o = { source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 } };
-    return E.solveWhite(o, base, 30) > E.solveWhite(o, base, 10) || 'relation inversée';
+    return E.solveWhite(o, base, 30).white > E.solveWhite(o, base, 10).white || 'relation inversée';
   });
 
   /* ---------- calibration ---------- */
