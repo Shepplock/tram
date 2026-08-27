@@ -1,4 +1,4 @@
-const CACHE = 'printpak-v36';
+const CACHE = 'printpak-v37';
 const FILES = ['./', './index.html'];
 // icônes et manifeste volontairement absents : addAll() est tout-ou-rien,
 // un fichier manquant ferait échouer l'ensemble du cache hors ligne.
