@@ -464,6 +464,8 @@ video{display:none}
     <button data-a="jarvis" aria-pressed="false"><canvas></canvas><span>Jarvis</span></button>
     <button data-a="bayer" aria-pressed="false"><canvas></canvas><span>Bayer 4</span></button>
     <button data-a="bayer8" aria-pressed="false"><canvas></canvas><span>Bayer 8</span></button>
+    <button data-a="bluenoise" aria-pressed="false"><canvas></canvas><span>Blue noise</span></button>
+    <button data-a="halftone" aria-pressed="false"><canvas></canvas><span>Halftone</span></button>
     <button data-a="seuil" aria-pressed="false"><canvas></canvas><span>Seuil</span></button>
     <button data-a="glyphes" aria-pressed="false"><canvas></canvas><span>Glyphes</span></button>
     <button data-a="ascii" aria-pressed="false"><canvas></canvas><span>ASCII</span></button>
@@ -482,6 +484,14 @@ video{display:none}
     <div class="hint">128 px wide in four grey levels, each pixel rendered as a 3×3 block of dots —
       128×3 lands exactly on 384. The heaviest style for ink: raise the white point if coverage
       climbs past 25%.</div>
+  </div>
+
+  <div class="hint" style="margin-top:14px">
+    <b>Blue noise</b> is a fixed matrix like Bayer, so the pattern never jumps between
+    frames — the fix for shimmering video. But its spectrum carries no visible structure,
+    so it grains like Floyd without the lattice.<br><br>
+    <b>Halftone</b> grows round dots from the centre of each cell. Clustered dots always
+    print, where Floyd's single isolated pixels can be missed by the head.
   </div>
 
   <div class="row" id="scaleRow" style="margin-top:24px">
@@ -630,6 +640,8 @@ video{display:none}
       <button data-a="jarvis">Jarvis</button>
       <button data-a="bayer">Bayer 4</button>
       <button data-a="bayer8">Bayer 8</button>
+      <button data-a="bluenoise">Blue noise</button>
+      <button data-a="halftone">Halftone</button>
       <button data-a="seuil">Threshold</button>
       <button data-a="glyphes">Glyphs</button>
       <button data-a="ascii">ASCII</button>
@@ -748,6 +760,72 @@ const KERNELS={
           [-2,2,1/48],[-1,2,3/48],[0,2,5/48],[1,2,3/48],[2,2,1/48]]
 };
 const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+/* Matrice de similigravure à points groupés, 8×8, trame inclinée à 45°. */
+const HALFTONE=[
+  [24,10,12,26,35,47,49,37],[ 8, 0, 2,14,45,59,61,51],
+  [22, 6, 4,16,43,57,63,53],[30,20,18,28,33,41,55,39],
+  [34,46,48,38,25,11,13,27],[44,58,60,50, 9, 1, 3,15],
+  [42,56,62,52,23, 7, 5,17],[32,40,54,36,31,21,19,29]];
+/* --------------------------------------------------------------------------
+   Bruit bleu, par void-and-cluster (Ulichney). Comme Bayer, c'est une matrice
+   de seuils fixe : la trame ne saute donc pas d'une image à l'autre, ce qui
+   supprime le scintillement de la diffusion d'erreur en vidéo. Mais son
+   spectre est construit pour n'avoir aucun motif perceptible — on obtient la
+   stabilité de Bayer sans son quadrillage.
+   La tuile est calculée une seule fois, à la première utilisation.
+   -------------------------------------------------------------------------- */
+const BN_N = 64;
+let BN = null;
+function buildBlueNoise(){
+  const N=BN_N, T=N*N, M=new Int32Array(T);
+  const pat=new Uint8Array(T);
+  const E=new Float32Array(T);
+
+  // Noyau gaussien torique, appliqué par mise à jour incrémentale.
+  const R=5, SIG=1.5, K=[];
+  for(let dy=-R;dy<=R;dy++) for(let dx=-R;dx<=R;dx++)
+    K.push([dx,dy,Math.exp(-(dx*dx+dy*dy)/(2*SIG*SIG))]);
+
+  const bump=(i,sign)=>{
+    const x=i%N, y=(i/N)|0;
+    for(let k=0;k<K.length;k++){
+      const nx=(x+K[k][0]+N)%N, ny=(y+K[k][1]+N)%N;
+      E[ny*N+nx]+=sign*K[k][2];
+    }
+  };
+  const tightest=()=>{ let best=-1,bv=-Infinity;
+    for(let i=0;i<T;i++) if(pat[i] && E[i]>bv){bv=E[i];best=i;} return best; };
+  const largestVoid=()=>{ let best=-1,bv=Infinity;
+    for(let i=0;i<T;i++) if(!pat[i] && E[i]<bv){bv=E[i];best=i;} return best; };
+
+  // Motif initial : environ un dixième de points, placés au hasard.
+  let seed=12345;
+  const rnd=()=>((seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff);
+  let count=0, want=Math.round(T*0.1);
+  while(count<want){ const i=(rnd()*T)|0; if(!pat[i]){pat[i]=1;bump(i,1);count++;} }
+
+  // Phase 1 : on écarte les points jusqu'à l'équilibre.
+  for(;;){
+    const c=tightest(); pat[c]=0; bump(c,-1);
+    const v=largestVoid();
+    if(v===c){ pat[c]=1; bump(c,1); break; }
+    pat[v]=1; bump(v,1);
+  }
+
+  const initial=Uint8Array.from(pat);
+  // Phase 2 : on retire les points un à un, du plus serré au plus isolé.
+  let rank=count-1;
+  while(rank>=0){ const c=tightest(); pat[c]=0; bump(c,-1); M[c]=rank--; }
+
+  // Phase 3 : on repart du motif initial et on comble les vides.
+  pat.set(initial);
+  E.fill(0);
+  for(let i=0;i<T;i++) if(pat[i]) bump(i,1);
+  rank=count;
+  while(rank < T){ const v=largestVoid(); pat[v]=1; bump(v,1); M[v]=rank++; }
+  return M;
+}
+
 const BAYER8=[
   [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
   [12,44, 4,36,14,46, 6,38],[60,28,52,20,62,30,54,22],
@@ -757,6 +835,27 @@ const BAYER8=[
 function dither(g,w,h,algo){
   const o=new Uint8ClampedArray(w*h);
   if(algo==='seuil'){for(let i=0;i<g.length;i++)o[i]=g[i]>127?255:0;return o}
+  if(algo==='bluenoise'){
+    if(!BN) BN=buildBlueNoise();
+    const N=BN_N, m=N-1, d=N*N;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const t=(BN[(y&m)*N+(x&m)]+0.5)/d*255;
+      o[y*w+x]=g[y*w+x]>t?255:0;
+    }
+    return o;
+  }
+  if(algo==='halftone'){
+    /* Similigravure à points groupés, matrice classique inclinée à 45°.
+       Les points naissent au centre de chaque cellule et grossissent avec la
+       densité : ils sortent toujours, là où un point isolé d'un pixel peut
+       être raté par la tête thermique. */
+    const M=HALFTONE, n=8, m=7, d=64;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const t=(M[y&m][x&m]+0.5)/d*255;
+      o[y*w+x]=g[y*w+x]>t?255:0;
+    }
+    return o;
+  }
   if(algo==='bayer'||algo==='bayer8'){
     const M = algo==='bayer8'?BAYER8:BAYER, n=M.length, m=n-1, d=n*n;
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
