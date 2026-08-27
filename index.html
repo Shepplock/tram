@@ -389,23 +389,40 @@ video{display:none}
 <div class="tabs" role="tablist">
   <button role="tab" aria-selected="true" data-p="ton">Tone</button>
   <button role="tab" aria-selected="false" data-p="trame">Style</button>
-  <button role="tab" aria-selected="false" data-p="pre">Settings</button>
   <button role="tab" aria-selected="false" data-p="exp">Export</button>
+  <button role="tab" aria-selected="false" data-p="pre">Settings</button>
 </div>
 
 <!-- TONE — tout ce qui précède le tramage. C'est ici que se joue la
      couverture finale, bien plus que dans le choix de l'algorithme. -->
 <div class="panel on" id="p-ton">
+
+  <!-- Chemin rapide, en tête de panneau : un preset ou le réglage automatique
+       donnent un résultat correct sans rien comprendre à la couverture.
+       Les curseurs ne servent qu'à affiner ensuite. -->
+  <div class="legend">Start here</div>
+  <div class="preset-list" id="presets"></div>
+  <div class="seg" style="margin-bottom:6px">
+    <button class="btn" id="auto" style="width:auto;flex:1">Auto</button>
+    <button class="btn ghost" id="save" style="width:auto;flex:1">Save current</button>
+  </div>
+  <div class="hint" id="autoOut">Auto finds the white point that lands coverage in the target zone.</div>
+
+  <div class="legend" style="margin-top:26px">Main</div>
+  <div class="row">
+    <label>White point<i id="vWhite">180</i></label>
+    <input type="range" id="white" min="90" max="255" value="180">
+    <div class="hint">The one setting that guarantees zero dots. At 254 some still remain.</div>
+  </div>
   <div class="row">
     <label>Sky<i id="vSky">65</i></label>
     <input type="range" id="sky" min="0" max="100" value="65">
     <div class="hint">Weights the blue channel when converting. At 0, a blue sky lands in mid-grey and fills with dots.</div>
   </div>
-  <div class="row">
-    <label>White point<i id="vWhite">180</i></label>
-    <input type="range" id="white" min="90" max="255" value="180">
-    <div class="hint">The only setting that guarantees zero dots. At 254 some still remain.</div>
-  </div>
+  <div class="seg" style="margin-top:8px"><button id="moreBtn" aria-pressed="false">More settings</button></div>
+
+  <!-- Réglages d'affinage, repliés par défaut. Ils comptent, mais après. -->
+  <div id="fineRow" style="display:none;margin-top:20px">
   <div class="row">
     <label>Floor<i id="vFloor">40</i></label>
     <input type="range" id="floor" min="0" max="70" value="40">
@@ -425,7 +442,9 @@ video{display:none}
     <input type="range" id="blur" min="0" max="3" value="0">
     <div class="hint">Raise only for dark, noisy photos.</div>
   </div>
-  <div class="seg">
+  </div>
+
+  <div class="seg" style="margin-top:20px">
     <button id="invert" aria-pressed="false">Invert</button>
     <button id="clipBtn" aria-pressed="false">Show clipping</button>
   </div>
@@ -519,9 +538,6 @@ video{display:none}
 
 <!-- SETTINGS — presets, calibration de l'imprimante, partage, formats. -->
 <div class="panel" id="p-pre">
-  <div class="legend">Saved</div>
-  <div class="preset-list" id="presets"></div>
-  <button class="btn ghost" id="save" style="margin-top:10px">Save current settings</button>
   <div class="legend" style="margin-top:28px">Calibration</div>
   <div class="hint" style="margin-bottom:12px">
     Print the chart once. Find the step that looks mid-grey on paper, compare it to its label, and correct the difference below.
@@ -1069,6 +1085,25 @@ function solveComp(midStep){
   for(let i=0;i<24;i++){
     const mid=(lo+hi)/2;
     if(refCoverage(180+mid) > goal) hi=mid; else lo=mid;
+  }
+  return Math.round((lo+hi)/2);
+}
+
+
+/* --------------------------------------------------------------------------
+   Réglage automatique. Cherche le point blanc qui amène la couverture sur la
+   cible, par dichotomie sur le pipeline réel plutôt que par une formule : le
+   résultat tient compte du style choisi, du recadrage et de la photo.
+   Le calcul se fait à demi-résolution — la couverture y est à un dixième de
+   point près, pour quatre fois moins de travail.
+   -------------------------------------------------------------------------- */
+function solveWhite(o, st, target){
+  const fast = {...st, w: Math.max(96, Math.round((st.w||384)/2)), clip:false};
+  let lo=90, hi=255;
+  for(let i=0;i<9;i++){
+    const mid=Math.round((lo+hi)/2);
+    const r=process({...o, st:{...fast, white:mid}});
+    if(r.pct > target) hi=mid; else lo=mid;   // point blanc haut = image sombre
   }
   return Math.round((lo+hi)/2);
 }
@@ -1833,11 +1868,15 @@ $('#closeSheet').addEventListener('click',()=>$('#sheet').classList.remove('on')
 
 /* ---------- presets ---------- */
 const KEY='trame:presets';
+/* Presets d'usine. Chacun porte TOUTES les clés : un preset partiel laissait
+   traîner l'échelle ou la taille de cellule du réglage précédent. */
+const BASE={w:384,cell:8,scale:1,edge:16,vig:30,invert:false};
 const FACTORY=[
-  {name:'Sky & architecture',s:{w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs'}},
-  {name:'Fine-grain portrait', s:{w:384,sky:20,white:200,floor:42,gamma:62,sharp:8, blur:1,invert:false,algo:'fs'}},
-  {name:'White sky',         s:{w:384,sky:100,white:168,floor:43,gamma:74,sharp:14,blur:0,invert:false,algo:'fs'}},
-  {name:'Silhouette',         s:{w:384,sky:30,white:190,floor:0, gamma:90,sharp:10,blur:1,invert:false,algo:'seuil'}}
+  {name:'Fine grain',  s:{...BASE,sky:20, white:200,floor:42,gamma:62,sharp:8, blur:1,algo:'fs'}},
+  {name:'White sky',   s:{...BASE,sky:100,white:168,floor:43,gamma:74,sharp:14,blur:0,algo:'fs'}},
+  {name:'Architecture',s:{...BASE,sky:65, white:180,floor:40,gamma:80,sharp:14,blur:0,algo:'fs'}},
+  {name:'Silhouette',  s:{...BASE,sky:30, white:190,floor:0,  gamma:90,sharp:10,blur:1,algo:'seuil'}},
+  {name:'GB Cam',      s:{...BASE,sky:20, white:205,floor:0,  gamma:80,sharp:0, blur:0,algo:'gbcam'}}
 ];
 let presets=FACTORY.slice();
 function drawPresets(){
@@ -1919,6 +1958,28 @@ $('#discard').addEventListener('click',async ()=>{
   } else { syncUI(); render(); }
   drawFilm(); updateExpInfo();
 });
+/* Réglage automatique : neuf essais suffisent à cadrer le point blanc. */
+$('#auto').addEventListener('click',()=>{
+  const b=batch[cur];
+  if(!b){ $('#autoOut').textContent='Load or shoot a photo first.'; return; }
+  $('#autoOut').textContent='Searching…';
+  setTimeout(()=>{
+    const {src,box}=cropPx(b);
+    const found=solveWhite({source:src, crop:box}, eff(cfg()), 16);
+    cfg().white=Math.max(90, Math.min(255, found - device.comp));
+    syncUI(); render();
+    $('#autoOut').innerHTML='White point set to <b>'+cfg().white+'</b> — coverage in the target zone. Adjust from there.';
+  },20);
+});
+
+/* Repli des réglages d'affinage. */
+$('#moreBtn').addEventListener('click',()=>{
+  const on=$('#fineRow').style.display==='none';
+  $('#fineRow').style.display=on?'block':'none';
+  $('#moreBtn').setAttribute('aria-pressed',on);
+  if(on && typeof paintThumbs==='function') paintThumbs();
+});
+
 $('#clipBtn').addEventListener('click',()=>{
   clipOn=!clipOn;
   $('#clipBtn').setAttribute('aria-pressed',clipOn);
