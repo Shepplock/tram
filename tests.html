@@ -82,7 +82,7 @@ fetch('index.html?nocache=' + Date.now(), { cache: 'reload' })
     document.querySelector('.sub').textContent +=
       ' — index.html chargé' + (ver ? ' (' + ver + ')' : '') + '.';
     const E = new Function(src + `; return {
-      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp, solveWhite
+      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp, solveWhite, buildBlueNoise
     };`)();
     run(E);
   })
@@ -120,7 +120,7 @@ function run(E) {
 
   /* ---------- tramage ---------- */
 
-  ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8'].forEach(algo => {
+  ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise', 'halftone'].forEach(algo => {
     check(`${algo} : un aplat à 25 % de gris rend ~75 % d'encre`, () => {
       const b = E.dither(flat(48, 48, 255 * 0.25), 48, 48, algo);
       // Atkinson perd un quart de l'erreur par construction : il éclaircit.
@@ -143,10 +143,43 @@ function run(E) {
   });
 
   check('le blanc pur ne dépose aucun point, quel que soit l\u2019algorithme', () => {
-    for (const a of ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8']) {
+    for (const a of ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise', 'halftone']) {
       if (ink(E.dither(flat(24, 24, 255), 24, 24, a)) !== 0) return `${a} salit le blanc`;
     }
     return true;
+  });
+
+  check('le bruit bleu est déterministe — pas de scintillement en vidéo', () => {
+    // Régression clé : c'est ce qui le distingue de la diffusion d'erreur.
+    const a = E.dither(flat(40, 40, 120), 40, 40, 'bluenoise');
+    const b = E.dither(flat(40, 40, 120), 40, 40, 'bluenoise');
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return `écart à l'indice ${i}`;
+    return true;
+  });
+
+  check('la tuile de bruit bleu est une permutation complète', () => {
+    const M = E.buildBlueNoise();
+    const seen = new Set(M);
+    return seen.size === 64 * 64 || `${seen.size} rangs distincts sur 4096`;
+  });
+
+  check('la similigravure groupe ses points au lieu de les disperser', () => {
+    // À densité égale, ses points isolés doivent être bien plus rares que ceux
+    // de Floyd : c'est toute la raison d'être de ce style sur papier thermique.
+    const iso = bits => {
+      const w = 64; let n = 0;
+      for (let y = 1; y < 63; y++) for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        if (bits[i] >= 128) continue;
+        let v = 0;
+        for (const d of [-1, 1, -w, w]) if (bits[i + d] < 128) v++;
+        if (!v) n++;
+      }
+      return n;
+    };
+    const g = flat(64, 64, 255 * 0.85);
+    return iso(E.dither(g, 64, 64, 'halftone')) < iso(E.dither(g, 64, 64, 'fs'))
+      || 'autant de points isolés que Floyd';
   });
 
   /* ---------- dilatation ---------- */
@@ -252,8 +285,8 @@ function run(E) {
     return (r.W % 128 === 0) || `largeur ${r.W}`;
   });
 
-  check('les dix styles produisent tous une image non vide', () => {
-    for (const a of ['fs','atkinson','stucki','jarvis','bayer','bayer8','seuil','glyphes','ascii','gbcam']) {
+  check('les douze styles produisent tous une image non vide', () => {
+    for (const a of ['fs','atkinson','stucki','jarvis','bayer','bayer8','bluenoise','halftone','seuil','glyphes','ascii','gbcam']) {
       const r = call({ algo: a, white: 210 });
       if (!r.bits.length) return `${a} ne rend rien`;
       if (r.pct <= 0 || r.pct >= 100) return `${a} rend ${r.pct.toFixed(1)}%`;
