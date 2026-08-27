@@ -411,7 +411,7 @@ video{display:none}
   <div class="legend" style="margin-top:26px">Main</div>
   <div class="row">
     <label>White point<i id="vWhite">180</i></label>
-    <input type="range" id="white" min="90" max="255" value="180">
+    <input type="range" id="white" min="50" max="255" value="180">
     <div class="hint">The one setting that guarantees zero dots. At 254 some still remain.</div>
   </div>
   <div class="row">
@@ -649,7 +649,7 @@ video{display:none}
     </div>
     <div class="row" style="margin-top:14px">
       <label>White point<i id="cvWhite">180</i></label>
-      <input type="range" id="cWhite" min="90" max="255" value="180">
+      <input type="range" id="cWhite" min="50" max="255" value="180">
     </div>
     <div class="row">
       <label>Sky<i id="cvSky">65</i></label>
@@ -1196,15 +1196,21 @@ function solveComp(midStep){
    Le calcul se fait à demi-résolution — la couverture y est à un dixième de
    point près, pour quatre fois moins de travail.
    -------------------------------------------------------------------------- */
+const WHITE_MIN=50, WHITE_MAX=255;
 function solveWhite(o, st, target){
   const fast = {...st, w: Math.max(96, Math.round((st.w||384)/2)), clip:false};
-  let lo=90, hi=255;
-  for(let i=0;i<9;i++){
+  let lo=WHITE_MIN, hi=WHITE_MAX;
+  for(let i=0;i<10;i++){
     const mid=Math.round((lo+hi)/2);
     const r=process({...o, st:{...fast, white:mid}});
     if(r.pct > target) hi=mid; else lo=mid;   // point blanc haut = image sombre
   }
-  return Math.round((lo+hi)/2);
+  const white=Math.round((lo+hi)/2);
+  /* La cible n'est pas toujours atteignable : à plancher nul, ou sur une photo
+     très sombre, les bornes sont franchies avant elle. On rend la couverture
+     réellement obtenue plutôt que de laisser croire au succès. */
+  const got=process({...o, st:{...fast, white}}).pct;
+  return {white, pct:got, capped: white<=WHITE_MIN+1 || white>=WHITE_MAX-1};
 }
 </script>
 
@@ -2064,10 +2070,14 @@ $('#auto').addEventListener('click',()=>{
   $('#autoOut').textContent='Searching…';
   setTimeout(()=>{
     const {src,box}=cropPx(b);
-    const found=solveWhite({source:src, crop:box}, eff(cfg()), 16);
-    cfg().white=Math.max(90, Math.min(255, found - device.comp));
+    const r=solveWhite({source:src, crop:box}, eff(cfg()), 16);
+    cfg().white=Math.max(50, Math.min(255, r.white - device.comp));
     syncUI(); render();
-    $('#autoOut').innerHTML='White point set to <b>'+cfg().white+'</b> — coverage in the target zone. Adjust from there.';
+    $('#autoOut').innerHTML = r.capped
+      ? 'White point set to <b>'+cfg().white+'</b>, the closest this photo allows — '
+        + r.pct.toFixed(1) + '% coverage. Lower Floor or raise Gamma to reach further.'
+      : 'White point set to <b>'+cfg().white+'</b> — ' + r.pct.toFixed(1)
+        + '% coverage, inside the target zone. Adjust from there.';
   },20);
 });
 
