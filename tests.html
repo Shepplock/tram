@@ -61,16 +61,28 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
   ? true
   : `attendu ${b.toFixed(3)} ±${tol}, obtenu ${a.toFixed(3)}`;
 
-fetch('index.html')
+// Paramètre aléatoire : sans lui le service worker sert sa copie en cache,
+// qui peut dater d'avant la séparation moteur/interface. On veut le fichier
+// réellement en ligne, pas celui que le navigateur a gardé sous le coude.
+fetch('index.html?nocache=' + Date.now(), { cache: 'reload' })
   .then(r => r.text())
   .then(html => {
     const a = html.indexOf('<script id="engine">');
-    if (a < 0) throw new Error('bloc engine introuvable dans index.html');
+    if (a < 0) {
+      const plain = html.indexOf('<script>') >= 0;
+      throw new Error(plain
+        ? 'index.html en ligne est une version antérieure à v32 : son JavaScript '
+          + 'est encore d\'un seul bloc. Téléverse le nouvel index.html.'
+        : 'bloc engine introuvable — index.html semble absent ou incomplet.');
+    }
     const src = html.slice(html.indexOf('>', a) + 1, html.indexOf('<' + '/script>', a));
     // Le moteur est un script classique : on l'évalue dans une fonction et on
     // récupère ce dont les tests ont besoin.
+    const ver = (html.match(/printpak-v\d+/) || [])[0];
+    document.querySelector('.sub').textContent +=
+      ' — index.html chargé' + (ver ? ' (' + ver + ')' : '') + '.';
     const E = new Function(src + `; return {
-      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp
+      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp, solveWhite
     };`)();
     run(E);
   })
@@ -247,6 +259,30 @@ function run(E) {
       if (r.pct <= 0 || r.pct >= 100) return `${a} rend ${r.pct.toFixed(1)}%`;
     }
     return true;
+  });
+
+  /* ---------- réglage automatique ---------- */
+
+  check('solveWhite amène la couverture sur la cible', () => {
+    const o = { source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 } };
+    const w = E.solveWhite(o, base, 16);
+    const got = E.process({ ...o, st: { ...base, white: w } }).pct;
+    return near(got, 16, 2.5);
+  });
+
+  check('solveWhite converge quel que soit le point de départ', () => {
+    const o = { source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 } };
+    for (const st of [{ ...base, floor: 0, gamma: 100 }, { ...base, floor: 55, gamma: 60 }]) {
+      const w = E.solveWhite(o, st, 16);
+      const got = E.process({ ...o, st: { ...st, white: w } }).pct;
+      if (Math.abs(got - 16) > 3) return `plancher ${st.floor} → ${got.toFixed(1)}%`;
+    }
+    return true;
+  });
+
+  check('une cible plus sombre demande un point blanc plus haut', () => {
+    const o = { source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 } };
+    return E.solveWhite(o, base, 30) > E.solveWhite(o, base, 10) || 'relation inversée';
   });
 
   /* ---------- calibration ---------- */
