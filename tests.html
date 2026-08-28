@@ -82,7 +82,7 @@ fetch('index.html?nocache=' + Date.now(), { cache: 'reload' })
     document.querySelector('.sub').textContent +=
       ' — index.html chargé' + (ver ? ' (' + ver + ')' : '') + '.';
     const E = new Function(src + `; return {
-      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp, solveWhite, buildBlueNoise
+      boxBlur, dither, expand, gbBlock, gbQuant, process, glyphRender, refCoverage, solveComp, solveWhite, buildBlueNoise, pixelSort, rowShear, percentile
     };`)();
     run(E);
   })
@@ -218,6 +218,48 @@ function run(E) {
     return (noir === 100 && blanc === 0) || `noir ${noir}%, blanc ${blanc}%`;
   });
 
+  /* ---------- glitch ---------- */
+
+  const noisy = () => {
+    const g = new Float32Array(200 * 140);
+    for (let y = 0; y < 140; y++) for (let x = 0; x < 200; x++)
+      g[y * 200 + x] = 90 + 90 * Math.sin(x / 13) * Math.cos(y / 9) + ((x * y) % 37);
+    return g;
+  };
+  const avg = g => { let s = 0; for (const v of g) s += v; return s / g.length; };
+
+  check('le tri de pixels ne change pas la moyenne', () => {
+    // Propriété qui garantit qu'aucun réglage d'encre n'est à refaire :
+    // trier n'est qu'une permutation.
+    const a = avg(noisy()), b = avg(E.pixelSort(noisy(), 200, 140, 50, 7));
+    return near(b, a, 0.001);
+  });
+
+  check('le décalage de lignes ne change pas la moyenne', () => {
+    const a = avg(noisy()), b = avg(E.rowShear(noisy(), 200, 140, 30, 7));
+    return near(b, a, 0.001);
+  });
+
+  check('même graine, même glitch — pas de scintillement', () => {
+    const a = E.pixelSort(noisy(), 200, 140, 50, 42);
+    const b = E.pixelSort(noisy(), 200, 140, 50, 42);
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return `écart à l'indice ${i}`;
+    return true;
+  });
+
+  check('une graine différente donne un autre glitch', () => {
+    const a = E.pixelSort(noisy(), 200, 140, 50, 42);
+    const b = E.pixelSort(noisy(), 200, 140, 50, 43);
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true;
+    return 'résultats identiques';
+  });
+
+  check('le seuil en centile suit la distribution de l\u2019image', () => {
+    const g = noisy();
+    const lo = E.percentile(g, 10), mid = E.percentile(g, 50), hi = E.percentile(g, 90);
+    return (lo < mid && mid < hi) || `${lo} / ${mid} / ${hi}`;
+  });
+
   /* ---------- chaîne complète ---------- */
 
   const srcCanvas = (() => {
@@ -230,7 +272,8 @@ function run(E) {
     return c;
   })();
   const base = { w: 384, sky: 65, white: 180, floor: 40, gamma: 80, sharp: 14, blur: 0,
-                 invert: false, algo: 'fs', cell: 8, scale: 1, edge: 16, vig: 30 };
+                 invert: false, algo: 'fs', cell: 8, scale: 1, edge: 16, vig: 30,
+                 gsort: 0, gshear: 0, gseed: 1 };
   const call = over => E.process({
     source: srcCanvas, crop: { x: 0, y: 0, w: 240, h: 180 }, st: { ...base, ...over }
   });
@@ -253,6 +296,18 @@ function run(E) {
       if (r.clipHi[i] && r.bits[i] < 128) return `point trouvé en zone clippée (indice ${i})`;
     }
     return true;
+  });
+
+  check('glitch à zéro laisse l\u2019image intacte', () => {
+    const a = call({ gsort: 0, gshear: 0 }).pct;
+    const b = call({}).pct;
+    return near(a, b, 0.001);
+  });
+
+  check('le glitch ne consomme pas plus d\u2019encre', () => {
+    const a = call({}).pct;
+    const b = call({ gsort: 55, gshear: 18, gseed: 3 }).pct;
+    return near(b, a, 1.5);
   });
 
   check('l\u2019échelle grossit le grain sans dériver en densité', () => {
