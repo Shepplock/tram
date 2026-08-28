@@ -444,6 +444,30 @@ video{display:none}
   </div>
   </div>
 
+  <!-- Glitch : pré-traitement appliqué avant le tramage, donc combinable avec
+       les douze styles. Replié tant qu'il est éteint, pour ne pas encombrer. -->
+  <div class="legend" style="margin-top:26px">Glitch</div>
+  <div class="seg"><button id="glitchBtn" aria-pressed="false">Enable glitch</button></div>
+  <div id="glitchRow" style="display:none;margin-top:18px">
+    <div class="row">
+      <label>Melt<i id="vGsort">0</i></label>
+      <input type="range" id="gsort" min="0" max="95" value="0">
+      <div class="hint">Sorts runs of pixels along each row, which stretches them into streaks.
+        The value is a percentile, so it adapts to each photo rather than needing a fixed level.</div>
+    </div>
+    <div class="row">
+      <label>Shear<i id="vGshear">0</i></label>
+      <input type="range" id="gshear" min="0" max="60" value="0">
+      <div class="hint">Displaces bands of rows sideways.</div>
+    </div>
+    <div class="row">
+      <label>Seed<i id="vGseed">1</i></label>
+      <input type="range" id="gseed" min="1" max="99" value="1">
+    </div>
+    <div class="hint">Neither effect changes ink coverage — both only shuffle existing pixels,
+      so nothing needs recalibrating.</div>
+  </div>
+
   <div class="seg" style="margin-top:20px">
     <button id="invert" aria-pressed="false">Invert</button>
     <button id="clipBtn" aria-pressed="false">Show clipping</button>
@@ -879,6 +903,74 @@ function dither(g,w,h,algo){
 
 /* dessine une source dans le canvas de travail puis renvoie {bits,w,h,pct} */
 /* o = {source, crop:{x,y,w,h} en pixels source, st, mirror} */
+/* --------------------------------------------------------------------------
+   Glitch. Ce n'est pas un tramage mais un pré-traitement : il déforme l'image
+   avant qu'elle n'entre dans l'algorithme, et se combine donc avec les douze.
+   Propriété commode : trier et décaler ne sont que des permutations de pixels,
+   la moyenne ne bouge pas — ces effets ne coûtent aucune encre supplémentaire.
+   -------------------------------------------------------------------------- */
+function mulberry(seed){
+  let t = seed >>> 0;
+  return function(){
+    t += 0x6D2B79F5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* Seuil exprimé en centile : le réglage s'adapte de lui-même à chaque photo,
+   au lieu d'être sans effet sur une image claire et brutal sur une sombre. */
+function percentile(g, pct){
+  const hist=new Int32Array(256);
+  for(let i=0;i<g.length;i++) hist[Math.max(0,Math.min(255,g[i]|0))]++;
+  const want=g.length*pct/100;
+  let acc=0;
+  for(let v=0;v<256;v++){ acc+=hist[v]; if(acc>=want) return v; }
+  return 255;
+}
+
+/* Tri de pixels : les suites sous le seuil sont triées le long de la ligne.
+   Elles s'étirent en dégradés lisses, que le tramage rend en longues stries. */
+function pixelSort(g,w,h,pct,seed){
+  const thresh=percentile(g,pct), rnd=mulberry(seed), MAXRUN=280;
+  for(let y=0;y<h;y++){
+    const row=y*w;
+    let x=0;
+    while(x<w){
+      if(g[row+x]<thresh){
+        let x2=x;
+        while(x2<w && g[row+x2]<thresh && (x2-x)<MAXRUN) x2++;
+        if(x2-x>4){
+          const seg=g.slice(row+x,row+x2);
+          seg.sort();
+          if(rnd()<0.5) seg.reverse();
+          g.set(seg,row+x);
+        }
+        x=x2;
+      } else x++;
+    }
+  }
+  return g;
+}
+
+/* Décalage horizontal par bandes : la rupture, l'image qui déraille. */
+function rowShear(g,w,h,amp,seed){
+  const rnd=mulberry(seed ^ 0x9E37), bands=Math.max(4, Math.round(h/34));
+  const buf=new Float32Array(w);
+  for(let b=0;b<bands;b++){
+    const y0=Math.floor(rnd()*Math.max(1,h-4));
+    const hh=3+Math.floor(rnd()*26);
+    const d=Math.round((rnd()*2-1)*amp);
+    if(!d) continue;
+    for(let y=y0;y<Math.min(h,y0+hh);y++){
+      buf.set(g.subarray(y*w,(y+1)*w));
+      for(let x=0;x<w;x++) g[y*w+x]=buf[((x-d)%w+w)%w];
+    }
+  }
+  return g;
+}
+
 /* dilate un rendu 1 bit en plus proche voisin : la trame grossit sans se deformer */
 function expand(bits,dW,dH,W,H){
   const o=new Uint8ClampedArray(W*H);
@@ -916,6 +1008,12 @@ function process(o){
     const bl=boxBlur(g,dW,dH,1);
     for(let i=0;i<g.length;i++) g[i]=Math.max(0,Math.min(255,g[i]+(g[i]-bl[i])*amt));
   }
+  /* Le glitch agit sur les valeurs brutes : après les niveaux, l'image est
+     trop écrasée pour qu'il reste quoi que ce soit à trier. */
+  const seed=st.gseed||1;
+  if(st.gsort>0)  g=pixelSort(g,dW,dH,st.gsort,seed);
+  if(st.gshear>0) g=rowShear(g,dW,dH,st.gshear,seed);
+
   const bp=20, wp=Math.max(30, st.white), gm=st.gamma/100;
   const raw = st.clip ? Float32Array.from(g) : null;   // copie avant mappage, pour les masques
   /* le caractère le plus dense ne dépose que ~50% d'encre : lui appliquer en plus
@@ -1228,7 +1326,7 @@ function solveWhite(o, st, target){
 
 
 const $ = s => document.querySelector(s);
-const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1,edge:16,vig:30};
+const state = {w:384,sky:65,white:180,floor:40,gamma:80,sharp:14,blur:0,invert:false,algo:'fs',cell:8,scale:1,edge:16,vig:30,gsort:0,gshear:0,gseed:1};
 
 const out = document.createElement('canvas');
 out.id = 'preview';
@@ -1535,6 +1633,14 @@ function syncUI(){
   $('#vEdge').textContent=((c.edge==null?16:c.edge)/10).toFixed(1);
   $('#vig').value=c.vig==null?30:c.vig;
   $('#vVig').textContent=c.vig==null?30:c.vig;
+  ['gsort','gshear','gseed'].forEach(k=>{
+    const e=$('#'+k), l=$('#v'+k[0].toUpperCase()+k.slice(1));
+    if(e) e.value=c[k]||0;
+    if(l) l.textContent=c[k]||0;
+  });
+  const gOn=(c.gsort>0||c.gshear>0);
+  $('#glitchRow').style.display=gOn?'block':'none';
+  $('#glitchBtn').setAttribute('aria-pressed',gOn);
   $('#scaleRow').style.display = (grid||gb) ? 'none' : 'block';
   const sc=c.scale||1;
   $('#scale').value = Math.round(sc*10);
@@ -1555,6 +1661,27 @@ $('#algoSeg').addEventListener('click',e=>{
 $('#cell').addEventListener('input',e=>{
   cfg().cell=+e.target.value;$('#vCell').textContent=e.target.value;schedule();
 });
+['gsort','gshear','gseed'].forEach(k=>{
+  const el=$('#'+k); if(!el) return;
+  el.addEventListener('input',ev=>{
+    cfg()[k]=+ev.target.value;
+    $('#v'+k[0].toUpperCase()+k.slice(1)).textContent=ev.target.value;
+    schedule();
+  });
+});
+$('#glitchBtn').addEventListener('click',()=>{
+  const on=$('#glitchRow').style.display==='none';
+  $('#glitchRow').style.display=on?'block':'none';
+  $('#glitchBtn').setAttribute('aria-pressed',on);
+  if(on && !cfg().gsort && !cfg().gshear){   // des valeurs de départ visibles
+    cfg().gsort=55; cfg().gshear=18;
+  } else if(!on){
+    cfg().gsort=0; cfg().gshear=0;           // éteindre doit vraiment éteindre
+  }
+  syncUI(); schedule();
+  if(typeof paintThumbs==='function') paintThumbs();
+});
+
 ['edge','vig'].forEach(k=>{
   const el=$('#'+k); if(!el) return;
   el.addEventListener('input',ev=>{
@@ -1975,7 +2102,7 @@ $('#closeSheet').addEventListener('click',()=>$('#sheet').classList.remove('on')
 const KEY='trame:presets';
 /* Presets d'usine. Chacun porte TOUTES les clés : un preset partiel laissait
    traîner l'échelle ou la taille de cellule du réglage précédent. */
-const BASE={w:384,cell:8,scale:1,edge:16,vig:30,invert:false};
+const BASE={w:384,cell:8,scale:1,edge:16,vig:30,invert:false,gsort:0,gshear:0,gseed:1};
 const FACTORY=[
   {name:'Fine grain',  s:{...BASE,sky:20, white:200,floor:42,gamma:62,sharp:8, blur:1,algo:'fs'}},
   {name:'White sky',   s:{...BASE,sky:100,white:168,floor:43,gamma:74,sharp:14,blur:0,algo:'fs'}},
@@ -2321,7 +2448,7 @@ $('#chart').addEventListener('click',()=>{
 });
 
 /* ================= réglages dans l'URL ================= */
-const URLKEYS={w:'w',sky:'s',white:'p',floor:'f',gamma:'g',sharp:'a',blur:'b',algo:'k',cell:'z',scale:'y'};
+const URLKEYS={w:'w',sky:'s',white:'p',floor:'f',gamma:'g',sharp:'a',blur:'b',algo:'k',cell:'z',scale:'y',gsort:'q',gshear:'r',gseed:'d'};
 const DEVKEYS={comp:'c',gap:'e',mtop:'t',mbot:'m'};
 function stateToHash(){
   const o=[];
@@ -2403,7 +2530,7 @@ requestAnimationFrame(()=>drawSwatches(true));
 
 /* ================= slider thumbs, shaped like the console keys ================= */
 const THUMB={sky:'S',white:'W',floor:'F',gamma:'G',sharp:'D',blur:'B',
-             cell:'C',scale:'P',edge:'E',vig:'V',comp:'C',gap:'G',mtop:'T',mbot:'B',
+             cell:'C',scale:'P',edge:'E',vig:'V',gsort:'M',gshear:'H',gseed:'N',comp:'C',gap:'G',mtop:'T',mbot:'B',
              cSky:'S',cWhite:'W',cGamma:'G',cCell:'C',cScale:'P'};
 function thumbURI(ch,fill,ring,ink){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">'
