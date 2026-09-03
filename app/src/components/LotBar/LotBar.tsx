@@ -1,5 +1,7 @@
 import { useBatchStore } from '../../state/batchStore';
+import { useHistoryStore } from '../../state/historyStore';
 import { useToneStore } from '../../state/toneStore';
+import { useUndoRedo } from '../../hooks/useUndoRedo';
 import styles from './LotBar.module.scss';
 
 export function LotBar() {
@@ -11,16 +13,25 @@ export function LotBar() {
   const removeCurrent = useBatchStore((s) => s.removeCurrent);
   const tone = useToneStore((s) => s.tone);
   const setTone = useToneStore((s) => s.setTone);
+  const clearHistory = useHistoryStore((s) => s.clear);
+  const { canUndo, canRedo, undo, redo } = useUndoRedo();
 
   const item = items[cur] ?? null;
-  if (!items.length) return null;
-
   const many = items.length > 1;
   const active = item?.own ?? tone;
 
+  const discard = () => {
+    removeCurrent();
+    clearHistory();
+  };
+
   return (
     <div className={styles.bar}>
-      <button type="button" className={styles.btn} onClick={removeCurrent}>Discard</button>
+      <button type="button" className={styles.btn} disabled={!canUndo} onClick={undo}>Undo</button>
+      <button type="button" className={styles.btn} disabled={!canRedo} onClick={redo}>Redo</button>
+      {items.length > 0 && (
+        <button type="button" className={styles.btn} onClick={discard}>Discard</button>
+      )}
       {many && (
         <>
           <button

@@ -3,8 +3,7 @@ import type { Algo } from '../../engine/types';
 import { paint } from '../../engine/paint';
 import { renderSwatch } from '../../services/swatch';
 import { Slider } from '../Slider/Slider';
-import { useBatchStore } from '../../state/batchStore';
-import { useToneStore } from '../../state/toneStore';
+import { useActiveTone } from '../../hooks/useActiveTone';
 import styles from './StylePanel.module.scss';
 
 const ALGOS: { id: Algo; label: string }[] = [
@@ -48,16 +47,7 @@ function AlgoSwatch({ algo, cell, scale }: { algo: Algo; cell: number; scale: nu
 }
 
 export function StylePanel() {
-  const tone = useToneStore((s) => s.tone);
-  const setTone = useToneStore((s) => s.setTone);
-  const item = useBatchStore((s) => s.items[s.cur] ?? null);
-  const updateItem = useBatchStore((s) => s.updateItem);
-
-  const active = item?.own ?? tone;
-  const setActive = (patch: Partial<typeof tone>) => {
-    if (item?.own) updateItem(item.id, { own: { ...item.own, ...patch } });
-    else setTone(patch);
-  };
+  const { active, setActive } = useActiveTone();
 
   const grid = active.algo === 'glyphes' || active.algo === 'ascii';
   const gbcam = active.algo === 'gbcam';

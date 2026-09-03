@@ -1,29 +1,24 @@
 import { useState } from 'react';
 import { solveWhite } from '../../engine/whitepoint';
 import { Slider } from '../Slider/Slider';
+import { PresetList } from '../PresetList/PresetList';
+import { useActiveTone } from '../../hooks/useActiveTone';
 import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
-import { useToneStore } from '../../state/toneStore';
+import { usePresetsStore } from '../../state/presetsStore';
 import { withCompensation } from '../../services/renderItem';
 import styles from './TonePanel.module.scss';
 
 const AUTO_TARGET_PCT = 16;
 
 export function TonePanel() {
-  const tone = useToneStore((s) => s.tone);
-  const setTone = useToneStore((s) => s.setTone);
   const item = useBatchStore((s) => s.items[s.cur] ?? null);
-  const updateItem = useBatchStore((s) => s.updateItem);
   const comp = useDeviceStore((s) => s.device.comp);
+  const { active, setActive } = useActiveTone();
+  const savePreset = usePresetsStore((s) => s.save);
 
   const [moreOpen, setMoreOpen] = useState(false);
   const [autoMsg, setAutoMsg] = useState('Auto finds the white point that lands coverage in the target zone.');
-
-  const active = item?.own ?? tone;
-  const setActive = (patch: Partial<typeof tone>) => {
-    if (item?.own) updateItem(item.id, { own: { ...item.own, ...patch } });
-    else setTone(patch);
-  };
 
   // Derived from the active item's own values every render — not local state
   // seeded once — so switching batch items with different glitch settings
@@ -51,11 +46,19 @@ export function TonePanel() {
     }, 20);
   };
 
+  const saveCurrent = () => {
+    const name = window.prompt('Preset name');
+    if (!name) return;
+    savePreset(name, active);
+  };
+
   return (
     <div>
       <div className={styles.legend}>Start here</div>
+      <PresetList setActive={setActive} />
       <div className={styles.seg}>
         <button type="button" className={styles.toggle} onClick={runAuto}>Auto</button>
+        <button type="button" className={styles.toggle} onClick={saveCurrent}>Save current</button>
       </div>
       <div className={styles.hint}>{autoMsg}</div>
 
