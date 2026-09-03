@@ -1,10 +1,13 @@
 import { useExport } from '../../hooks/useExport';
 import { useImportFiles } from '../../hooks/useImportFiles';
 import { pickFiles } from '../../services/pickFiles';
+import { pickMimeType } from '../../services/videoRecording';
 import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useUiStore } from '../../state/uiStore';
 import styles from './BottomBar.module.scss';
+
+const videoSupported = pickMimeType() !== null;
 
 export function BottomBar() {
   const { addFiles, status } = useImportFiles();
@@ -20,8 +23,8 @@ export function BottomBar() {
     if (files && files.length) addFiles(files);
   };
 
-  const choosePhoto = () => {
-    setDevice({ capture: 'photo' });
+  const choose = (mode: 'photo' | 'video') => {
+    setDevice({ capture: mode });
     setCameraOpen(true);
   };
 
@@ -30,8 +33,12 @@ export function BottomBar() {
       {status && <div className={styles.status}>{status}</div>}
       <div className={styles.bar}>
         <div className={styles.mode}>
-          <button type="button" aria-pressed={capture === 'photo'} onClick={choosePhoto}>Photo</button>
-          <button type="button" aria-pressed={capture === 'video'} disabled title="Video recording is coming soon">
+          <button type="button" aria-pressed={capture === 'photo'} onClick={() => choose('photo')}>Photo</button>
+          <button
+            type="button" aria-pressed={capture === 'video'} disabled={!videoSupported}
+            title={videoSupported ? undefined : 'Video recording is not supported in this browser'}
+            onClick={() => choose('video')}
+          >
             Video
           </button>
         </div>

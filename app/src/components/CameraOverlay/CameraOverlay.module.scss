@@ -5,6 +5,23 @@
 .stage { position: relative; width: 100%; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .canvas { image-rendering: pixelated; max-width: 100%; max-height: 100%; background: var(--well); border: 3px solid var(--ink); }
 .empty { color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.recTime {
+  position: absolute; top: calc(env(safe-area-inset-top) + 14px); left: 14px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .05em; color: #fff;
+  background: rgba(180, 30, 30, .85); padding: 5px 9px; border-radius: 3px;
+}
+
+.fpsSeg {
+  display: flex; gap: 5px; justify-content: center; padding: 0 16px 10px;
+
+  button {
+    font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: 8px 10px; cursor: pointer; background: var(--shell-dark); color: var(--chrome); border: 2px solid var(--shell-line);
+
+    &[aria-pressed='true'] { background: var(--screen); color: var(--ink); border-color: var(--ink); }
+    &:disabled { opacity: .4; }
+  }
+}
 
 .bar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -39,4 +56,12 @@
   box-shadow: 0 0 0 3px var(--shell); cursor: pointer; padding: 0; flex: 0 0 auto;
 
   &:disabled { opacity: .5; }
+}
+.recBtn {
+  background: var(--accent); border-color: var(--shell); position: relative;
+
+  &.on { border-radius: 10px; }
+  &.on::after {
+    content: ''; position: absolute; inset: 34%; background: var(--shell);
+  }
 }
