@@ -3,8 +3,13 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// GitHub Pages serves this as a project site at /tram/, not at the domain
+// root, so both the built asset URLs and the PWA scope need that prefix.
+const BASE = '/tram/'
+
 // https://vite.dev/config/
 export default defineConfig({
+  base: BASE,
   plugins: [
     react(),
     VitePWA({
@@ -14,8 +19,8 @@ export default defineConfig({
         name: 'Print Pak',
         short_name: 'Print Pak',
         description: 'Dither photos for thermal receipt printers.',
-        start_url: '/',
-        scope: '/',
+        start_url: BASE,
+        scope: BASE,
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#9BBC0F',
