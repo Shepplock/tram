@@ -73,14 +73,14 @@ export function TonePanel() {
 
       {moreOpen && (
         <div>
-          <Slider label="Floor" value={active.floor} min={0} max={70} onChange={(v) => setActive({ floor: v })}
+          <Slider label="Floor" value={active.floor} min={0} max={70} onChange={(v) => setActive({ floor: v })} glyph="F"
             hint="Prevents pure black, which buckles the paper." />
-          <Slider label="Gamma" value={active.gamma} min={40} max={160} onChange={(v) => setActive({ gamma: v })}
+          <Slider label="Gamma" value={active.gamma} min={40} max={160} onChange={(v) => setActive({ gamma: v })} glyph="G"
             format={(v) => (v / 100).toFixed(2)} />
-          <Slider label="Detail" value={active.sharp} min={0} max={30} onChange={(v) => setActive({ sharp: v })}
+          <Slider label="Detail" value={active.sharp} min={0} max={30} onChange={(v) => setActive({ sharp: v })} glyph="D"
             format={(v) => (v / 10).toFixed(1)}
             hint="Rescues fine detail lost when scaling down: wires, grilles, type." />
-          <Slider label="Blur" value={active.blur} min={0} max={3} onChange={(v) => setActive({ blur: v })}
+          <Slider label="Blur" value={active.blur} min={0} max={3} onChange={(v) => setActive({ blur: v })} glyph="B"
             hint="Raise only for dark, noisy photos." />
         </div>
       )}
@@ -93,11 +93,11 @@ export function TonePanel() {
       </div>
       {glitchOn && (
         <div>
-          <Slider label="Melt" value={active.gsort} min={0} max={95} onChange={(v) => setActive({ gsort: v })}
+          <Slider label="Melt" value={active.gsort} min={0} max={95} onChange={(v) => setActive({ gsort: v })} glyph="M"
             hint="Sorts runs of pixels along each row, stretching them into streaks. The value is a percentile, so it adapts to each photo." />
-          <Slider label="Shear" value={active.gshear} min={0} max={60} onChange={(v) => setActive({ gshear: v })}
+          <Slider label="Shear" value={active.gshear} min={0} max={60} onChange={(v) => setActive({ gshear: v })} glyph="H"
             hint="Displaces bands of rows sideways." />
-          <Slider label="Seed" value={active.gseed} min={1} max={99} onChange={(v) => setActive({ gseed: v })} />
+          <Slider label="Seed" value={active.gseed} min={1} max={99} onChange={(v) => setActive({ gseed: v })} glyph="N" />
           <div className={styles.hint}>Neither effect changes ink coverage — both only shuffle existing pixels, so nothing needs recalibrating.</div>
         </div>
       )}

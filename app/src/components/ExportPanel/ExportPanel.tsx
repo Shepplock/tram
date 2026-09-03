@@ -36,7 +36,7 @@ export function ExportPanel() {
         </button>
       </div>
       {showGap && (
-        <Slider label="Gap between frames" value={device.gap} min={0} max={80} onChange={(v) => setDevice({ gap: v })}
+        <Slider label="Gap between frames" value={device.gap} min={0} max={80} onChange={(v) => setDevice({ gap: v })} glyph="G"
           hint="White left between frames in the strip, for cutting." />
       )}
       <div className={styles.seg}>
@@ -52,8 +52,8 @@ export function ExportPanel() {
 
       <div className={styles.legend}>Reserved band</div>
       <div className={styles.hint}>White left untouched at top or bottom, so you can print onto a used receipt without covering its type.</div>
-      <Slider label="Top" value={device.mtop} min={0} max={400} onChange={(v) => setDevice({ mtop: v })} />
-      <Slider label="Bottom" value={device.mbot} min={0} max={400} onChange={(v) => setDevice({ mbot: v })} />
+      <Slider label="Top" value={device.mtop} min={0} max={400} onChange={(v) => setDevice({ mtop: v })} glyph="T" />
+      <Slider label="Bottom" value={device.mbot} min={0} max={400} onChange={(v) => setDevice({ mbot: v })} glyph="B" />
 
       <div className={styles.legend}>Summary</div>
       <div className={styles.hint}>

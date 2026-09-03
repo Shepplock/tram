@@ -1,4 +1,7 @@
+import { useEffect, useRef } from 'react';
 import type { Algo } from '../../engine/types';
+import { paint } from '../../engine/paint';
+import { renderSwatch } from '../../services/swatch';
 import { Slider } from '../Slider/Slider';
 import { useBatchStore } from '../../state/batchStore';
 import { useToneStore } from '../../state/toneStore';
@@ -19,6 +22,31 @@ const ALGOS: { id: Algo; label: string }[] = [
   { id: 'gbcam', label: 'GB Cam' },
 ];
 
+const SWATCH_H = 52;
+
+/** Draws that algorithm's own dither texture on a black-to-white gradient,
+ *  at the button's real rendered width — redrawn on resize/cell/scale change
+ *  (index.html:2486-2518). */
+function AlgoSwatch({ algo, cell, scale }: { algo: Algo; cell: number; scale: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const btn = canvas?.parentElement;
+    if (!canvas || !btn) return;
+    const draw = () => {
+      const w = Math.max(40, Math.round(btn.clientWidth));
+      paint(canvas, renderSwatch(algo, w, SWATCH_H, cell, scale));
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(btn);
+    return () => ro.disconnect();
+  }, [algo, cell, scale]);
+
+  return <canvas ref={canvasRef} className={styles.swatch} />;
+}
+
 export function StylePanel() {
   const tone = useToneStore((s) => s.tone);
   const setTone = useToneStore((s) => s.setTone);
@@ -33,6 +61,8 @@ export function StylePanel() {
 
   const grid = active.algo === 'glyphes' || active.algo === 'ascii';
   const gbcam = active.algo === 'gbcam';
+  const cell = active.cell ?? 8;
+  const scale = active.scale ?? 1;
 
   return (
     <div>
@@ -46,7 +76,7 @@ export function StylePanel() {
             aria-pressed={active.algo === a.id}
             onClick={() => setActive({ algo: a.id })}
           >
-            <span className={styles.swatch} />
+            <AlgoSwatch algo={a.id} cell={cell} scale={scale} />
             <span>{a.label}</span>
           </button>
         ))}
@@ -54,9 +84,9 @@ export function StylePanel() {
 
       {gbcam && (
         <div style={{ marginTop: 24 }}>
-          <Slider label="Edge" value={active.edge ?? 16} min={0} max={35} onChange={(v) => setActive({ edge: v })}
+          <Slider label="Edge" value={active.edge ?? 16} min={0} max={35} onChange={(v) => setActive({ edge: v })} glyph="E"
             format={(v) => (v / 10).toFixed(1)} />
-          <Slider label="Vignette" value={active.vig ?? 30} min={0} max={60} onChange={(v) => setActive({ vig: v })} />
+          <Slider label="Vignette" value={active.vig ?? 30} min={0} max={60} onChange={(v) => setActive({ vig: v })} glyph="V" />
           <div className={styles.hint}>
             128px wide in four grey levels, each pixel rendered as a 3×3 block of dots — 128×3 lands
             exactly on 384. The heaviest style for ink: raise the white point if coverage climbs past 25%.
@@ -75,7 +105,7 @@ export function StylePanel() {
 
       {!grid && !gbcam && (
         <div style={{ marginTop: 24 }}>
-          <Slider label="Pixel size" value={active.scale ?? 1} min={1} max={6} onChange={(v) => setActive({ scale: v })}
+          <Slider label="Pixel size" value={scale} min={1} max={6} onChange={(v) => setActive({ scale: v })} glyph="P"
             format={(v) => v.toFixed(1)}
             hint="Dithered at reduced resolution, then expanded. Coarsens the grain." />
         </div>
@@ -83,7 +113,7 @@ export function StylePanel() {
 
       {grid && (
         <div style={{ marginTop: 24 }}>
-          <Slider label="Cell size" value={active.cell ?? 8} min={4} max={24} onChange={(v) => setActive({ cell: v })}
+          <Slider label="Cell size" value={cell} min={4} max={24} onChange={(v) => setActive({ cell: v })} glyph="C"
             hint="Larger cells read more graphic and hold less detail." />
         </div>
       )}
