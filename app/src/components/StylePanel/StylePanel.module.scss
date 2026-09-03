@@ -1,0 +1,18 @@
+.legend {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin: 26px 0 12px;
+
+  &:first-child { margin-top: 0; }
+}
+.grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.algoBtn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 4px;
+  background: var(--well); border: 2px solid var(--shell-line); cursor: pointer;
+  font-size: 8.5px; letter-spacing: .03em; color: var(--ink); text-align: center;
+
+  &[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+}
+.swatch { width: 100%; height: 34px; background: repeating-linear-gradient(90deg, #000, #fff); }
+.hint { font-size: 9.5px; color: var(--muted); margin-top: 14px; line-height: 1.5; }

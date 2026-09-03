@@ -1,0 +1,21 @@
+@use './skins';
+
+:root {
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --bar: calc(62px + env(safe-area-inset-bottom));
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; overscroll-behavior: none; }
+body {
+  background: var(--page); color: var(--chrome);
+  font-family: var(--mono); font-size: 13px; line-height: 1.5;
+  -webkit-text-size-adjust: 100%; padding-bottom: var(--bar);
+}
+button, input { font-family: var(--mono); }
+
+.app-wrap {
+  max-width: 520px; margin: 0 auto; background: var(--shell);
+  border-left: 3px solid var(--shell-line); border-right: 3px solid var(--shell-line);
+  min-height: 100vh;
+}
