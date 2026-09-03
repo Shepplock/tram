@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { coverageVerdict, paint } from '../../engine/paint';
 import { usePreviewResult } from '../../hooks/usePreviewResult';
 import { renderItem } from '../../services/renderItem';
@@ -6,8 +6,7 @@ import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useToneStore } from '../../state/toneStore';
 import { useUiStore } from '../../state/uiStore';
-import { CameraOverlay } from '../CameraOverlay/CameraOverlay';
-import { CropOverlay } from '../CropOverlay/CropOverlay';
+import { LotBar } from '../LotBar/LotBar';
 import { LiveViewfinder } from './LiveViewfinder';
 import styles from './PreviewScreen.module.scss';
 
@@ -44,7 +43,7 @@ export function PreviewScreen() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const result = usePreviewResult();
   const tone = useToneStore((s) => s.tone);
-  const [cropOpen, setCropOpen] = useState(false);
+  const setCropOpen = useUiStore((s) => s.setCropOpen);
   const cameraOpen = useUiStore((s) => s.cameraOpen);
   const setCameraOpen = useUiStore((s) => s.setCameraOpen);
 
@@ -101,9 +100,8 @@ export function PreviewScreen() {
             {items.map((it, i) => <Thumb key={it.id} index={i} />)}
           </div>
         )}
+        <LotBar />
       </div>
-      {cropOpen && curItem && <CropOverlay item={curItem} onClose={() => setCropOpen(false)} />}
-      {cameraOpen && <CameraOverlay onClose={() => setCameraOpen(false)} />}
     </div>
   );
 }

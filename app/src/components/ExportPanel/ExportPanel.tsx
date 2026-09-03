@@ -1,4 +1,5 @@
 import { Slider } from '../Slider/Slider';
+import { estimateExport } from '../../services/export';
 import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useToneStore } from '../../state/toneStore';
@@ -9,7 +10,9 @@ export function ExportPanel() {
   const setTone = useToneStore((s) => s.setTone);
   const device = useDeviceStore((s) => s.device);
   const setDevice = useDeviceStore((s) => s.setDevice);
-  const item = useBatchStore((s) => s.items[s.cur] ?? null);
+  const items = useBatchStore((s) => s.items);
+  const estimate = estimateExport(items, tone, device);
+  const showGap = device.outMode === 'bande' && items.filter((it) => !it.skip).length > 1;
 
   return (
     <div>
@@ -32,12 +35,19 @@ export function ExportPanel() {
           Separate frames
         </button>
       </div>
-      <Slider label="Gap between frames" value={device.gap} min={0} max={80} onChange={(v) => setDevice({ gap: v })}
-        hint="White left between frames in the strip, for cutting." />
+      {showGap && (
+        <Slider label="Gap between frames" value={device.gap} min={0} max={80} onChange={(v) => setDevice({ gap: v })}
+          hint="White left between frames in the strip, for cutting." />
+      )}
       <div className={styles.seg}>
         <button type="button" className={styles.toggle} aria-pressed={device.num} onClick={() => setDevice({ num: !device.num })}>
           Number the frames
         </button>
+      </div>
+      <div className={styles.hint}>
+        {device.outMode === 'bande'
+          ? 'Every frame end to end in one PNG, ready to print in a single run.'
+          : 'One PNG per frame, saved one at a time from the export sheet.'}
       </div>
 
       <div className={styles.legend}>Reserved band</div>
@@ -47,7 +57,15 @@ export function ExportPanel() {
 
       <div className={styles.legend}>Summary</div>
       <div className={styles.hint}>
-        {item ? `${tone.w}px wide, ${device.outMode === 'bande' ? 'single strip' : 'separate frames'}.` : 'Import a photo first, then use the Export key below.'}
+        {estimate ? (
+          <>
+            {estimate.keepCount} frame{estimate.keepCount > 1 ? 's' : ''}
+            {estimate.exclCount ? ` — ${estimate.exclCount} excluded` : ''}<br />
+            {device.outMode === 'bande'
+              ? <>Strip of <b>{estimate.totalPx} px</b>, about <b>{estimate.totalMm.toFixed(0)} mm</b> of paper.</>
+              : <>About <b>{estimate.totalMm.toFixed(0)} mm</b> of paper in total.</>}
+          </>
+        ) : 'Import a photo first, then use the Export key below.'}
       </div>
     </div>
   );

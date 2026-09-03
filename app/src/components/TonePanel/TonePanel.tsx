@@ -17,13 +17,21 @@ export function TonePanel() {
   const comp = useDeviceStore((s) => s.device.comp);
 
   const [moreOpen, setMoreOpen] = useState(false);
-  const [glitchOn, setGlitchOn] = useState(tone.gsort > 0 || tone.gshear > 0);
   const [autoMsg, setAutoMsg] = useState('Auto finds the white point that lands coverage in the target zone.');
 
   const active = item?.own ?? tone;
   const setActive = (patch: Partial<typeof tone>) => {
     if (item?.own) updateItem(item.id, { own: { ...item.own, ...patch } });
     else setTone(patch);
+  };
+
+  // Derived from the active item's own values every render — not local state
+  // seeded once — so switching batch items with different glitch settings
+  // keeps the toggle in sync (index.html:1641-1643).
+  const glitchOn = active.gsort > 0 || active.gshear > 0;
+  const toggleGlitch = () => {
+    if (glitchOn) setActive({ gsort: 0, gshear: 0 });
+    else setActive({ gsort: 55, gshear: 18 });
   };
 
   const runAuto = () => {
@@ -79,7 +87,7 @@ export function TonePanel() {
 
       <div className={styles.legend}>Glitch</div>
       <div className={styles.seg}>
-        <button type="button" className={styles.toggle} aria-pressed={glitchOn} onClick={() => setGlitchOn((o) => !o)}>
+        <button type="button" className={styles.toggle} aria-pressed={glitchOn} onClick={toggleGlitch}>
           Enable glitch
         </button>
       </div>

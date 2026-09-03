@@ -28,8 +28,10 @@ interface BatchStore {
   removeCurrent: () => void;
   setCur: (i: number) => void;
   updateItem: (id: string, patch: Partial<BatchItem>) => void;
+  /** Toggles the current item between its own tone override and the shared one. */
   detachCurrent: (tone: ToneSettings) => void;
-  applyToAll: (tone: ToneSettings) => void;
+  /** Clears every item's override so they all fall back to the shared tone. */
+  applyToAll: () => void;
   toggleSkip: (id: string) => void;
   clear: () => void;
 }
@@ -57,11 +59,14 @@ export const useBatchStore = create<BatchStore>((set, get) => ({
   updateItem: (id, patch) => set((s) => ({
     items: s.items.map((it) => (it.id === id ? { ...it, ...patch } : it)),
   })),
-  detachCurrent: (tone) => set((s) => ({
-    items: s.items.map((it, i) => (i === s.cur ? { ...it, own: { ...tone } } : it)),
-  })),
-  applyToAll: (tone) => set((s) => ({
-    items: s.items.map((it) => ({ ...it, own: { ...tone } })),
+  detachCurrent: (tone) => set((s) => {
+    const cur = s.items[s.cur];
+    if (!cur) return s;
+    const own = cur.own ? null : { ...tone };
+    return { items: s.items.map((it, i) => (i === s.cur ? { ...it, own } : it)) };
+  }),
+  applyToAll: () => set((s) => ({
+    items: s.items.map((it) => ({ ...it, own: null })),
   })),
   toggleSkip: (id) => set((s) => ({
     items: s.items.map((it) => (it.id === id ? { ...it, skip: !it.skip } : it)),
