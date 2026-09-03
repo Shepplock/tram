@@ -21,12 +21,6 @@
   text-align: center; padding: 30px 10px; background: transparent; border: 0; width: 100%; cursor: pointer;
 }
 
-.toolRow { display: flex; gap: 6px; margin-top: 8px; position: relative; z-index: 1; }
-.toolBtn {
-  flex: 1; font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  padding: 7px; cursor: pointer; background: var(--well); color: var(--ink); border: 2px solid var(--ink);
-}
-
 .meter { margin-top: 10px; position: relative; z-index: 1; }
 .lab {
   display: flex; justify-content: space-between; align-items: baseline;

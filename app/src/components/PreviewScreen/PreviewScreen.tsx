@@ -39,11 +39,9 @@ function Thumb({ index }: { index: number }) {
 
 export function PreviewScreen() {
   const items = useBatchStore((s) => s.items);
-  const curItem = useBatchStore((s) => s.items[s.cur] ?? null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const result = usePreviewResult();
   const tone = useToneStore((s) => s.tone);
-  const setCropOpen = useUiStore((s) => s.setCropOpen);
   const cameraOpen = useUiStore((s) => s.cameraOpen);
   const setCameraOpen = useUiStore((s) => s.setCameraOpen);
 
@@ -65,12 +63,6 @@ export function PreviewScreen() {
             <LiveViewfinder onOpenCamera={() => setCameraOpen(true)} />
           ) : null}
         </div>
-
-        {curItem && (
-          <div className={styles.toolRow}>
-            <button type="button" className={styles.toolBtn} onClick={() => setCropOpen(true)}>Crop / rotate</button>
-          </div>
-        )}
 
         <div className={styles.meter}>
           <div className={styles.lab}>

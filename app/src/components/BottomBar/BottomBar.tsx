@@ -1,6 +1,7 @@
 import { useExport } from '../../hooks/useExport';
 import { useImportFiles } from '../../hooks/useImportFiles';
 import { pickFiles } from '../../services/pickFiles';
+import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useUiStore } from '../../state/uiStore';
 import styles from './BottomBar.module.scss';
@@ -8,6 +9,8 @@ import styles from './BottomBar.module.scss';
 export function BottomBar() {
   const { addFiles, status } = useImportFiles();
   const setCameraOpen = useUiStore((s) => s.setCameraOpen);
+  const setCropOpen = useUiStore((s) => s.setCropOpen);
+  const hasCurrent = useBatchStore((s) => s.items.length > 0);
   const capture = useDeviceStore((s) => s.device.capture);
   const setDevice = useDeviceStore((s) => s.setDevice);
   const { doExport, canExport } = useExport();
@@ -33,7 +36,9 @@ export function BottomBar() {
           </button>
         </div>
         <button type="button" className={styles.btn} onClick={openPicker}>Import</button>
-        <button type="button" className={styles.btn} disabled title="Coming soon">Crop</button>
+        <button type="button" className={styles.btn} disabled={!hasCurrent} onClick={() => setCropOpen(true)}>
+          Crop
+        </button>
         <button type="button" className={`${styles.btn} ${styles.key}`} disabled={!canExport} onClick={doExport}>
           Export
         </button>
