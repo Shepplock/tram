@@ -79,6 +79,23 @@ export function useCamera(active: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, requestedFacing]);
 
+  // Nothing should keep the camera running once the tab is backgrounded,
+  // and it should pick back up when the tab returns (index.html:1789-1800).
+  useEffect(() => {
+    if (!active) return;
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else start(requestedFacing);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', stop);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', stop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, requestedFacing]);
+
   const flip = useCallback(() => {
     setRequestedFacing((f) => (f === 'environment' ? 'user' : 'environment'));
   }, []);

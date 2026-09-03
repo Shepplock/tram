@@ -1,7 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCamera } from '../../hooks/useCamera';
 import { useLiveDither } from '../../hooks/useLiveDither';
 import styles from './PreviewScreen.module.scss';
+
+/** Shuts the viewfinder's camera stream off after 90s of no interaction —
+ *  it's the app's single heaviest thing to leave running unattended
+ *  (index.html:1776-1787). */
+const IDLE_MS = 90000;
 
 /**
  * Default screen when nothing has been imported yet: an auto-starting,
@@ -12,10 +17,34 @@ import styles from './PreviewScreen.module.scss';
  */
 export function LiveViewfinder({ onOpenCamera }: { onOpenCamera: () => void }) {
   const [wantsCamera, setWantsCamera] = useState(true);
-  const { videoRef, facing, ready, error } = useCamera(wantsCamera);
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef(0);
+  const { videoRef, facing, ready, error } = useCamera(wantsCamera && !idle);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useLiveDither(videoRef, canvasRef, facing, wantsCamera);
+  useLiveDither(videoRef, canvasRef, facing, wantsCamera && !idle);
+
+  useEffect(() => {
+    if (idle) return;
+    const arm = () => {
+      clearTimeout(idleTimer.current);
+      idleTimer.current = window.setTimeout(() => setIdle(true), IDLE_MS);
+    };
+    arm();
+    document.addEventListener('pointerdown', arm, { passive: true });
+    return () => {
+      clearTimeout(idleTimer.current);
+      document.removeEventListener('pointerdown', arm);
+    };
+  }, [idle]);
+
+  if (idle) {
+    return (
+      <button type="button" className={styles.empty} onClick={() => setIdle(false)}>
+        Tap to start viewfinder
+      </button>
+    );
+  }
 
   if (error) {
     return (
