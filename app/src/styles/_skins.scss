@@ -26,13 +26,16 @@
   --muted: #2E2742;
 }
 // Translucent plastic: surface sheen + hinted grid seen through it.
-[data-skin='atomic'] .wrap {
+// Targets stable, plain (non-CSS-module) classes — `.app-wrap` (globals.scss)
+// and `.bottom-bar` (BottomBar.tsx) are always applied undashed alongside
+// their module classes, specifically so this selector can reach them.
+[data-skin='atomic'] .app-wrap {
   background-image:
     linear-gradient(180deg, rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 240px),
     repeating-linear-gradient(90deg, rgba(48, 36, 86, .055) 0 1px, transparent 1px 8px),
     repeating-linear-gradient(0deg, rgba(48, 36, 86, .055) 0 1px, transparent 1px 8px);
 }
-[data-skin='atomic'] .bar {
+[data-skin='atomic'] .bottom-bar {
   background-image: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0));
 }
 [data-skin='onebit'] {

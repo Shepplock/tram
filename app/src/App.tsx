@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ImportBar } from './components/ImportBar/ImportBar';
+import { BottomBar } from './components/BottomBar/BottomBar';
 import { PreviewScreen } from './components/PreviewScreen/PreviewScreen';
 import { Tabs } from './components/Tabs/Tabs';
 import { TonePanel } from './components/TonePanel/TonePanel';
@@ -29,7 +29,7 @@ function App() {
           { id: 'export', label: 'Export', content: <ExportPanel /> },
         ]}
       />
-      <ImportBar />
+      <BottomBar />
     </div>
   );
 }

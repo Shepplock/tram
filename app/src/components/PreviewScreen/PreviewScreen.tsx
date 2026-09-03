@@ -5,6 +5,7 @@ import { renderItem } from '../../services/renderItem';
 import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useToneStore } from '../../state/toneStore';
+import { useUiStore } from '../../state/uiStore';
 import { CameraOverlay } from '../CameraOverlay/CameraOverlay';
 import { CropOverlay } from '../CropOverlay/CropOverlay';
 import { LiveViewfinder } from './LiveViewfinder';
@@ -44,7 +45,8 @@ export function PreviewScreen() {
   const result = usePreviewResult();
   const tone = useToneStore((s) => s.tone);
   const [cropOpen, setCropOpen] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  const cameraOpen = useUiStore((s) => s.cameraOpen);
+  const setCameraOpen = useUiStore((s) => s.setCameraOpen);
 
   useEffect(() => {
     if (canvasRef.current && result) paint(canvasRef.current, result);

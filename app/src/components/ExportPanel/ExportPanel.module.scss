@@ -1,20 +1,10 @@
-.legend {
-  font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--muted); margin: 26px 0 12px;
+@use '../../styles/mixins' as *;
 
-  &:first-child { margin-top: 0; }
-}
+.legend { @include legend; }
 .seg { display: flex; gap: 4px; margin-bottom: 10px; }
 .toggle {
-  flex: 1; font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  padding: 9px; cursor: pointer; background: var(--well); color: var(--ink); border: 2px solid var(--shell-line);
-
-  &[aria-pressed='true'] { background: var(--accent); color: var(--well); border-color: var(--ink); }
+  @include pixel-toggle;
+  flex: 1; font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 9px; cursor: pointer;
 }
-.hint { font-size: 9.5px; color: var(--muted); margin: 4px 0 14px; line-height: 1.4; }
-.exportBtn {
-  width: 100%; margin-top: 20px; padding: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; background: var(--accent); color: var(--well); border: 2px solid var(--ink); cursor: pointer;
-
-  &:disabled { opacity: .4; cursor: default; }
-}
+.hint { @include hint; margin: 4px 0 14px; }

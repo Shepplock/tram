@@ -52,9 +52,9 @@ export function TonePanel() {
       <div className={styles.hint}>{autoMsg}</div>
 
       <div className={styles.legend}>Main</div>
-      <Slider label="White point" value={active.white} min={50} max={255} onChange={(v) => setActive({ white: v })}
+      <Slider label="White point" value={active.white} min={50} max={255} onChange={(v) => setActive({ white: v })} glyph="W"
         hint="The one setting that guarantees zero dots. At 254 some still remain." />
-      <Slider label="Sky" value={active.sky} min={0} max={100} onChange={(v) => setActive({ sky: v })}
+      <Slider label="Sky" value={active.sky} min={0} max={100} onChange={(v) => setActive({ sky: v })} glyph="S"
         hint="Weights the blue channel when converting. At 0, a blue sky lands in mid-grey and fills with dots." />
 
       <div className={styles.seg}>

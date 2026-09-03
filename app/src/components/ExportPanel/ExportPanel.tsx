@@ -2,8 +2,6 @@ import { Slider } from '../Slider/Slider';
 import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useToneStore } from '../../state/toneStore';
-import { renderItem } from '../../services/renderItem';
-import { paint } from '../../engine/paint';
 import styles from './ExportPanel.module.scss';
 
 export function ExportPanel() {
@@ -12,18 +10,6 @@ export function ExportPanel() {
   const device = useDeviceStore((s) => s.device);
   const setDevice = useDeviceStore((s) => s.setDevice);
   const item = useBatchStore((s) => s.items[s.cur] ?? null);
-
-  const doExport = () => {
-    if (!item) return;
-    const st = item.own ?? tone;
-    const r = renderItem(item, st, device.comp);
-    const canvas = document.createElement('canvas');
-    paint(canvas, r);
-    const link = document.createElement('a');
-    link.download = `printpak-${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  };
 
   return (
     <div>
@@ -61,11 +47,8 @@ export function ExportPanel() {
 
       <div className={styles.legend}>Summary</div>
       <div className={styles.hint}>
-        {item ? `${tone.w}px wide, ${device.outMode === 'bande' ? 'single strip' : 'separate frames'}.` : 'Import a photo first.'}
+        {item ? `${tone.w}px wide, ${device.outMode === 'bande' ? 'single strip' : 'separate frames'}.` : 'Import a photo first, then use the Export key below.'}
       </div>
-      <button type="button" className={styles.exportBtn} disabled={!item} onClick={doExport}>
-        Export
-      </button>
     </div>
   );
 }

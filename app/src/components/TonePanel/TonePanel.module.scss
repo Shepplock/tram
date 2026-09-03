@@ -1,14 +1,10 @@
-.legend {
-  font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--muted); margin: 26px 0 12px;
+@use '../../styles/mixins' as *;
 
-  &:first-child { margin-top: 0; }
-}
-.seg { display: flex; gap: 4px; margin-bottom: 10px; }
+.legend { @include legend; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .toggle {
-  flex: 1; font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  padding: 9px; cursor: pointer; background: var(--well); color: var(--ink); border: 2px solid var(--shell-line);
-
-  &[aria-pressed='true'] { background: var(--accent); color: var(--well); border-color: var(--ink); }
+  @include pixel-toggle;
+  font-size: 9px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 10px 11px; cursor: pointer;
 }
-.hint { font-size: 9.5px; color: var(--muted); margin: 4px 0 14px; line-height: 1.4; }
+.hint { @include hint; margin: 4px 0 14px; }
