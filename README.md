@@ -78,10 +78,9 @@ this running while you work.
 A few things to know:
 
 - **Camera access needs HTTPS (or `localhost`).** Testing on your own machine
-  in a browser at `localhost` works fine. To test the camera on a *phone*
-  over your local network, you'll need HTTPS — the simplest option is a
-  tunnel like `npx localtunnel --port 5173` or [ngrok](https://ngrok.com/),
-  which gives you a temporary `https://…` URL.
+  in a browser at `localhost` works fine. To test the camera (or anything
+  else) on a *phone*, you need HTTPS there too — see "Testing on a phone"
+  below.
 - **Run the tests**: `npx vitest run` (or `npx vitest` to watch and re-run on
   change). These cover the dithering engine — the pure math, not the UI.
 - **Type-check + production build locally**: `npm run build`. This is the
@@ -89,6 +88,38 @@ A few things to know:
   before pushing.
 - **Preview a production build**: `npm run build && npm run preview` — serves
   the actual built output, closer to what users will get than the dev server.
+
+## Testing on a phone
+
+Camera and video-recording features can't be exercised on a desktop browser
+alone — you'll want to load the dev server on an actual phone at some point.
+The dev server already has a self-signed HTTPS certificate configured
+(`@vitejs/plugin-basic-ssl` in `app/vite.config.ts`), so the simplest way is
+over your local Wi-Fi, no external service needed:
+
+1. Make sure your phone and computer are on the **same Wi-Fi network**.
+2. From `app/`, run:
+   ```sh
+   npm run dev -- --host
+   ```
+3. Vite prints several `Network:` URLs, one per network interface on your
+   computer — pick the one for your actual Wi-Fi adapter (commonly named
+   `en0` on macOS). Ignore any `bridge*`/`utun*`/VPN-looking addresses; your
+   phone can't reach those.
+4. Open that `https://<lan-ip>:5173/` URL on your phone. The browser will
+   warn about the self-signed certificate — this is expected (there's no
+   real certificate authority behind it), tap through it once: "Advanced →
+   Proceed" (Android/Chrome) or "Show Details → visit this website" (iOS
+   Safari).
+
+If your phone can't reach your computer over Wi-Fi (e.g. client-isolated
+guest networks, or you're not on the same network at all), a tunnel is the
+fallback — `npx cloudflared tunnel --url http://localhost:5173` or
+`npx localtunnel --port 5173`, no signup needed for either. This adds a
+third-party relay in the middle, though, so it's less reliable than the
+same-Wi-Fi method above (it's also the reason the dev server has
+`server.allowedHosts: true` in `vite.config.ts` — otherwise Vite rejects
+requests carrying a tunnel's hostname).
 
 ## Deploying
 
