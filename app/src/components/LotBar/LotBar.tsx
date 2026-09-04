@@ -16,6 +16,12 @@ export function LotBar() {
   const clearHistory = useHistoryStore((s) => s.clear);
   const { canUndo, canRedo, undo, redo } = useUndoRedo();
 
+  // Hidden until there's at least one photo — Undo/Redo alone would
+  // otherwise sit in this row (each taking half its width) on the plain
+  // live-viewfinder screen, before any photo-related action has happened
+  // (the original's `.lotbar` stays `display:none` until then too).
+  if (!items.length) return null;
+
   const item = items[cur] ?? null;
   const many = items.length > 1;
   const active = item?.own ?? tone;
@@ -29,9 +35,7 @@ export function LotBar() {
     <div className={styles.bar}>
       <button type="button" className={styles.btn} disabled={!canUndo} onClick={undo}>Undo</button>
       <button type="button" className={styles.btn} disabled={!canRedo} onClick={redo}>Redo</button>
-      {items.length > 0 && (
-        <button type="button" className={styles.btn} onClick={discard}>Discard</button>
-      )}
+      <button type="button" className={styles.btn} onClick={discard}>Discard</button>
       {many && (
         <>
           <button

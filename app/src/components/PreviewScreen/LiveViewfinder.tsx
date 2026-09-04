@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCamera } from '../../hooks/useCamera';
 import { useLiveDither } from '../../hooks/useLiveDither';
+import type { ProcessResult } from '../../engine/types';
 import styles from './PreviewScreen.module.scss';
 
 /** Shuts the viewfinder's camera stream off after 90s of no interaction —
@@ -15,14 +16,20 @@ const IDLE_MS = 90000;
  * unavailable or permission hasn't been granted. Tapping it opens the
  * full-screen camera overlay, which is where the actual shutter lives.
  */
-export function LiveViewfinder({ onOpenCamera }: { onOpenCamera: () => void }) {
+export function LiveViewfinder({ onOpenCamera, onCoverage }: {
+  onOpenCamera: () => void;
+  /** Fired with each live frame's coverage, throttled to the preview's own
+   *  frame rate — lets the coverage meter above track the live feed, not
+   *  just a captured photo (index.html:1858-1861). */
+  onCoverage?: (r: ProcessResult) => void;
+}) {
   const [wantsCamera, setWantsCamera] = useState(true);
   const [idle, setIdle] = useState(false);
   const idleTimer = useRef(0);
-  const { videoRef, facing, ready, error } = useCamera(wantsCamera && !idle);
+  const { videoRef, facing, flip, ready, error } = useCamera(wantsCamera && !idle);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useLiveDither(videoRef, canvasRef, facing, wantsCamera && !idle);
+  useLiveDither(videoRef, canvasRef, facing, wantsCamera && !idle, onCoverage);
 
   useEffect(() => {
     if (idle) return;
@@ -55,10 +62,20 @@ export function LiveViewfinder({ onOpenCamera }: { onOpenCamera: () => void }) {
   }
 
   return (
-    <button type="button" className={styles.liveButton} onClick={onOpenCamera} aria-label="Open camera">
-      <video ref={videoRef} playsInline muted style={{ display: 'none' }} />
-      <canvas ref={canvasRef} className={styles.canvas} />
-      {!ready && <div className={styles.empty}>Starting…</div>}
-    </button>
+    <>
+      <button type="button" className={styles.liveButton} onClick={onOpenCamera} aria-label="Open camera">
+        <video ref={videoRef} playsInline muted style={{ display: 'none' }} />
+        <canvas ref={canvasRef} className={styles.canvas} />
+        {!ready && <div className={styles.empty}>Starting…</div>}
+      </button>
+      {ready && (
+        <button
+          type="button" className={styles.liveFlip}
+          onClick={(e) => { e.stopPropagation(); flip(); }}
+        >
+          Flip
+        </button>
+      )}
+    </>
   );
 }

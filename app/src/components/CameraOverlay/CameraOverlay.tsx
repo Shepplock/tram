@@ -42,8 +42,9 @@ export function CameraOverlay({ onClose }: { onClose: () => void }) {
   const fps = useDeviceStore((s) => s.device.fps);
   const setDevice = useDeviceStore((s) => s.setDevice);
   const [video, setVideo] = useState<Blob | null>(null);
+  const [pct, setPct] = useState(0);
 
-  useLiveDither(videoRef, canvasRef, facing, true);
+  useLiveDither(videoRef, canvasRef, facing, true, (r) => setPct(r.pct));
   const { mimeType, recording, elapsedMs, start: startRec, stop: stopRec } = useVideoRecording(
     canvasRef, fps, (blob) => setVideo(blob),
   );
@@ -90,6 +91,13 @@ export function CameraOverlay({ onClose }: { onClose: () => void }) {
         ref={fileCamRef} type="file" accept="image/*" capture="environment"
         style={{ display: 'none' }} onChange={onNativeCapture}
       />
+      {!error && (
+        <div className={styles.head}>
+          <span>{videoMode ? 'Live dithered recording' : 'Live dithered preview'}</span>
+          <span>{ready ? `${pct.toFixed(1)}%` : '—'}</span>
+        </div>
+      )}
+
       <div className={styles.stage}>
         {error ? (
           <div className={styles.empty}>{error}</div>

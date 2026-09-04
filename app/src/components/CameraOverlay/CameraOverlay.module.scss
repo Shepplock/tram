@@ -2,6 +2,16 @@
   position: fixed; inset: 0; z-index: 100; background: var(--page);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
+.head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: calc(env(safe-area-inset-top) + 12px) 18px 0;
+
+  span:first-child { font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  span:last-child {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--ink);
+    background: var(--screen); border: 2px solid var(--ink); padding: 4px 8px;
+  }
+}
 .stage { position: relative; width: 100%; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .canvas { image-rendering: pixelated; max-width: 100%; max-height: 100%; background: var(--well); border: 3px solid var(--ink); }
 .empty { color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }

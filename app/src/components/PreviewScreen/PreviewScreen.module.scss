@@ -20,6 +20,12 @@
   color: var(--lcd-2); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
   text-align: center; padding: 30px 10px; background: transparent; border: 0; width: 100%; cursor: pointer;
 }
+.liveFlip {
+  position: absolute; right: 6px; bottom: 6px; z-index: 2;
+  font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 7px 9px; cursor: pointer; background: var(--screen); color: var(--ink);
+  border: 2px solid var(--ink); box-shadow: 2px 2px 0 rgba(0, 0, 0, .28);
+}
 
 .meter { margin-top: 10px; position: relative; z-index: 1; }
 .lab {

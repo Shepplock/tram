@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { coverageVerdict, paint } from '../../engine/paint';
+import type { ProcessResult } from '../../engine/types';
 import { usePreviewResult } from '../../hooks/usePreviewResult';
 import { renderItem } from '../../services/renderItem';
 import { useBatchStore } from '../../state/batchStore';
@@ -44,12 +45,21 @@ export function PreviewScreen() {
   const tone = useToneStore((s) => s.tone);
   const cameraOpen = useUiStore((s) => s.cameraOpen);
   const setCameraOpen = useUiStore((s) => s.setCameraOpen);
+  // Coverage while the live viewfinder is showing, not just a captured
+  // photo — the original updates its gauge continuously while framing
+  // (index.html:1858-1861). Reset once a real result exists so a stale
+  // live reading never lingers behind an actual photo.
+  const [liveCoverage, setLiveCoverage] = useState<ProcessResult | null>(null);
+  useEffect(() => {
+    if (result) setLiveCoverage(null);
+  }, [result]);
 
   useEffect(() => {
     if (canvasRef.current && result) paint(canvasRef.current, result);
   }, [result]);
 
-  const pct = result?.pct ?? 0;
+  const active = result ?? liveCoverage;
+  const pct = active?.pct ?? 0;
   const verdict = coverageVerdict(pct);
   const blocksFilled = Math.min(12, Math.round(pct / 4));
 
@@ -60,7 +70,7 @@ export function PreviewScreen() {
           {result ? (
             <canvas ref={canvasRef} className={styles.canvas} />
           ) : !cameraOpen ? (
-            <LiveViewfinder onOpenCamera={() => setCameraOpen(true)} />
+            <LiveViewfinder onOpenCamera={() => setCameraOpen(true)} onCoverage={setLiveCoverage} />
           ) : null}
         </div>
 
@@ -78,11 +88,11 @@ export function PreviewScreen() {
             ))}
           </div>
           <div className={`${styles.verdict} ${verdict.className === 'verdict warn' ? styles.verdictWarn : ''}`}>
-            {result ? verdict.text : ''}
+            {active ? verdict.text : ''}
           </div>
           <div className={styles.blank}>
-            {result && result.blank != null && !tone.invert
-              ? <>Blank paper guaranteed: <b>{result.blank.toFixed(0)}%</b> — no dot can occur there.</>
+            {active && active.blank != null && !tone.invert
+              ? <>Blank paper guaranteed: <b>{active.blank.toFixed(0)}%</b> — no dot can occur there.</>
               : null}
           </div>
         </div>
