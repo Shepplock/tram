@@ -6,7 +6,7 @@ import { useActiveTone } from '../../hooks/useActiveTone';
 import { useBatchStore } from '../../state/batchStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { usePresetsStore } from '../../state/presetsStore';
-import { withCompensation } from '../../services/renderItem';
+import { cropPx, withCompensation } from '../../services/renderItem';
 import styles from './TonePanel.module.scss';
 
 const AUTO_TARGET_PCT = 16;
@@ -33,8 +33,9 @@ export function TonePanel() {
     if (!item) { setAutoMsg('Load or shoot a photo first.'); return; }
     setAutoMsg('Searching…');
     setTimeout(() => {
+      const { src, box } = cropPx(item);
       const r = solveWhite(
-        { source: item.source, crop: { x: 0, y: 0, w: item.width, h: item.height } },
+        { source: src, crop: box },
         withCompensation(active, comp),
         AUTO_TARGET_PCT,
       );

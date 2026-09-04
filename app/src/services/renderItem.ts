@@ -19,7 +19,7 @@ function itemSource(b: BatchItem): CanvasImageSource {
 }
 
 /** The crop box is always explicit: full-frame if the image hasn't been cropped. */
-function cropPx(b: BatchItem) {
+export function cropPx(b: BatchItem) {
   const src = itemSource(b);
   const w = b.rot === 90 || b.rot === 270 ? b.height : b.width;
   const h = b.rot === 90 || b.rot === 270 ? b.width : b.height;
