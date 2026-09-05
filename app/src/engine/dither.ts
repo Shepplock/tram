@@ -1,7 +1,7 @@
 import { KERNELS, BAYER, BAYER8, HALFTONE, getBlueNoiseTile, BN_N } from './kernels';
 import type { Algo } from './types';
 
-export function dither(g: ArrayLike<number>, w: number, h: number, algo: Algo | string): Uint8ClampedArray {
+export function dither(g: ArrayLike<number>, w: number, h: number, algo: Algo | string, cell?: number): Uint8ClampedArray {
   const o = new Uint8ClampedArray(w * h);
 
   if (algo === 'seuil') {
@@ -27,6 +27,33 @@ export function dither(g: ArrayLike<number>, w: number, h: number, algo: Algo | 
       for (let x = 0; x < w; x++) {
         const t = (M[y & m][x & m] + 0.5) / d * 255;
         o[y * w + x] = g[y * w + x] > t ? 255 : 0;
+      }
+    }
+    return o;
+  }
+
+  if (algo === 'vinyl') {
+    const PITCH = Math.max(2, cell || 8); // px between spiral arms, adjustable via the Groove width slider
+    const FADE_R = PITCH * 5; // groove opacity ramps in over this radius, like a record's label
+    const cx = (w - 1) / 2, cy = (h - 1) / 2;
+    const om = 3, od = 16; // opacity dither: reuse the 4x4 Bayer matrix to thin out ink near the center
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx, dy = y - cy;
+        const r = Math.hypot(dx, dy);
+        const theta = Math.atan2(dy, dx);
+        const phase = r / PITCH - theta / (2 * Math.PI);
+        const frac = phase - Math.floor(phase);
+        const d = Math.abs(frac - 0.5) * 2;
+        const t = (1 - d) * 255;
+        let inked = g[y * w + x] <= t;
+        if (inked) {
+          let fade = Math.min(1, r / FADE_R);
+          fade = fade * fade * (3 - 2 * fade); // smoothstep
+          const noise = (BAYER[y & om][x & om] + 0.5) / od;
+          if (noise > fade) inked = false; // dropped: groove reads lighter near the center
+        }
+        o[y * w + x] = inked ? 0 : 255;
       }
     }
     return o;
