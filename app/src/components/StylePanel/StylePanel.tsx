@@ -19,6 +19,7 @@ const ALGOS: { id: Algo; label: string }[] = [
   { id: 'glyphes', label: 'Glyphes' },
   { id: 'ascii', label: 'ASCII' },
   { id: 'gbcam', label: 'GB Cam' },
+  { id: 'vinyl', label: 'Vinyl' },
 ];
 
 const SWATCH_H = 52;
@@ -51,6 +52,7 @@ export function StylePanel() {
 
   const grid = active.algo === 'glyphes' || active.algo === 'ascii';
   const gbcam = active.algo === 'gbcam';
+  const vinyl = active.algo === 'vinyl';
   const cell = active.cell ?? 8;
   const scale = active.scale ?? 1;
 
@@ -105,6 +107,13 @@ export function StylePanel() {
         <div style={{ marginTop: 24 }}>
           <Slider label="Cell size" value={cell} min={4} max={24} onChange={(v) => setActive({ cell: v })} glyph="C"
             hint="Larger cells read more graphic and hold less detail." />
+        </div>
+      )}
+
+      {vinyl && (
+        <div style={{ marginTop: 24 }}>
+          <Slider label="Groove width" value={cell} min={4} max={10} onChange={(v) => setActive({ cell: v })} glyph="G"
+            hint="Distance between spiral grooves. Wider grooves read more graphic, tighter grooves hold more tonal detail." />
         </div>
       )}
     </div>

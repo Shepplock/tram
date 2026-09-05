@@ -66,7 +66,7 @@ export function process(o: ProcessInput): ProcessResult {
     if (st.invert) v = 1 - v;
     g[i] = (fl + v * (1 - fl)) * 255;
   }
-  const small = grid ? glyphRender(g, dW, dH, st) : dither(g, dW, dH, st.algo);
+  const small = grid ? glyphRender(g, dW, dH, st) : dither(g, dW, dH, st.algo, st.cell);
   let black = 0;
   for (let i = 0; i < small.length; i++) if (small[i] < 128) black++;
   const bits = S === 1 ? small : expand(small, dW, dH, W, H);

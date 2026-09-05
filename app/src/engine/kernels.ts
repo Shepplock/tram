@@ -115,5 +115,5 @@ export function getBlueNoiseTile(): Int32Array {
 }
 
 export function isValidAlgo(a: string): a is Algo {
-  return ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise', 'halftone', 'seuil', 'glyphes', 'ascii', 'gbcam'].includes(a);
+  return ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise', 'halftone', 'vinyl', 'seuil', 'glyphes', 'ascii', 'gbcam'].includes(a);
 }
