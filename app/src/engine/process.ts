@@ -24,7 +24,7 @@ export function process(o: ProcessInput): ProcessResult {
 
   const H = Math.max(1, Math.round(c.h * W / c.w));
   /* Glyphs already have their own cell size: no extra dilation. */
-  const grid = st.algo === 'glyphes' || st.algo === 'ascii';
+  const grid = st.algo === 'glyphes' || st.algo === 'ascii' || st.algo === 'lyrics';
   const S = grid ? 1 : Math.max(1, st.scale || 1);
   const dW = Math.max(1, Math.round(W / S)), dH = Math.max(1, Math.round(H / S));
   const { work, wctx } = getWork();

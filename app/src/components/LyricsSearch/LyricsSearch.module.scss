@@ -1,0 +1,44 @@
+.overlay {
+  position: fixed; inset: 0; z-index: 70; background: rgba(15, 20, 10, .93);
+  display: flex; align-items: center; justify-content: center; padding: 18px;
+}
+.box {
+  background: var(--shell); border: 3px solid var(--ink); padding: 14px;
+  width: 100%; max-width: 640px; max-height: 100%; display: flex; flex-direction: column; gap: 10px;
+}
+.input {
+  font-family: var(--mono); font-size: 12px; padding: 10px 12px; letter-spacing: .02em;
+  background: var(--well); color: var(--ink); border: 2px solid var(--shell-line); width: 100%;
+}
+.body {
+  display: flex; gap: 10px; min-height: 0; flex: 1; overflow: hidden;
+}
+.results {
+  list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 45%; min-width: 0;
+  border: 2px solid var(--shell-line); background: var(--well);
+}
+.result {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%;
+  text-align: left; padding: 8px 10px; cursor: pointer; background: transparent; border: 0;
+  border-bottom: 1px solid var(--shell-line);
+  &:disabled { opacity: .4; cursor: default; }
+  &:hover:not(:disabled) { background: var(--shell-dark); }
+}
+.track { font-size: 11px; font-weight: 700; color: var(--ink); }
+.artist { font-size: 10px; color: var(--muted); }
+.noLyrics { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hint { font-size: 10.5px; color: var(--muted); padding: 10px; letter-spacing: .03em; }
+.preview {
+  flex: 1 1 55%; min-width: 0; display: flex; flex-direction: column; gap: 8px;
+  border: 2px solid var(--shell-line); background: var(--well); padding: 10px; overflow: hidden;
+}
+.previewHead { flex: 0 0 auto; }
+.lyrics {
+  flex: 1; overflow-y: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.5;
+  white-space: pre-wrap; color: var(--ink); margin: 0;
+}
+.use, .close {
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
+  padding: 12px; cursor: pointer; background: var(--shell-dark); color: var(--chrome); border: 2px solid var(--shell-line);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .3); flex: 0 0 auto;
+}

@@ -1,7 +1,15 @@
 export type Algo =
   | 'fs' | 'atkinson' | 'stucki' | 'jarvis'
   | 'bayer' | 'bayer8' | 'bluenoise' | 'halftone' | 'seuil'
-  | 'glyphes' | 'ascii' | 'gbcam';
+  | 'glyphes' | 'ascii' | 'gbcam' | 'lyrics';
+
+/** A song's lyrics picked for the `lyrics` style — `text` is pre-flattened
+ *  (whitespace/newlines collapsed) so `glyph.ts` can just walk a flat stream. */
+export interface LyricsSelection {
+  text: string;
+  track: string;
+  artist: string;
+}
 
 /** Tone/style settings for a single photo — mirrors the original `state` object. */
 export interface ToneSettings {
@@ -22,6 +30,7 @@ export interface ToneSettings {
   gshear: number;
   gseed: number;
   clip?: boolean;
+  lyrics?: LyricsSelection;
 }
 
 export interface CropRect {

@@ -93,13 +93,15 @@ describe('process', () => {
     expect(r.W % 128).toBe(0);
   });
 
-  it('all twelve styles produce a valid, non-degenerate image', () => {
+  it('all thirteen styles produce a valid, non-degenerate image', () => {
     const algos: ToneSettings['algo'][] = [
       'fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise',
-      'halftone', 'seuil', 'glyphes', 'ascii', 'gbcam',
+      'halftone', 'seuil', 'glyphes', 'ascii', 'gbcam', 'lyrics',
     ];
     for (const a of algos) {
-      const r = call({ algo: a, white: 210 });
+      const over: Partial<ToneSettings> = { algo: a, white: 210 };
+      if (a === 'lyrics') over.lyrics = { text: 'the quick brown fox jumps over the lazy dog', track: 't', artist: 'a' };
+      const r = call(over);
       expect(r.bits.length).toBeGreaterThan(0);
       expect(r.pct).toBeGreaterThan(0);
       expect(r.pct).toBeLessThan(100);
