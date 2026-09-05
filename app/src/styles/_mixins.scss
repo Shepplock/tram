@@ -1,0 +1,54 @@
+// Shared "pixel console" button language: raised keys that invert to look
+// like the LCD screen when pressed. Mirrors the original app's `.seg button`
+// (index.html:164-169) — the base look for any select/toggle control.
+@mixin pixel-toggle {
+  font-weight: 700;
+  background: var(--shell-dark); color: var(--chrome); border: 2px solid var(--shell-line);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .26);
+
+  &[aria-pressed='true'] {
+    background: var(--screen); color: var(--ink); border-color: var(--ink);
+    box-shadow: inset 0 0 0 2px var(--ink);
+  }
+}
+
+// Smaller controls that use the same rest/pressed language but a lighter
+// shadow, e.g. lot-bar actions (index.html:127-134).
+@mixin pixel-toggle-sm {
+  font-weight: 700;
+  background: var(--shell-dark); color: var(--chrome); border: 2px solid var(--shell-line);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .25);
+
+  &[aria-pressed='true'] {
+    background: var(--screen); color: var(--ink); border-color: var(--ink);
+    box-shadow: inset 0 0 0 2px var(--ink);
+  }
+
+  &:disabled { opacity: .35; box-shadow: none; }
+}
+
+// Full-width accent "key" call-to-action, e.g. Export (index.html:174-177,217).
+@mixin pixel-key {
+  font-weight: 700;
+  background: var(--ink); color: var(--shell); border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .3);
+
+  &:disabled { opacity: .4; box-shadow: none; cursor: default; }
+}
+
+// Section header with a trailing divider line (index.html:170-172).
+@mixin legend {
+  font-size: 8.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--muted); display: flex; align-items: center; gap: 8px; margin: 26px 0 11px;
+
+  &:first-child { margin-top: 0; }
+
+  &::after { content: ''; flex: 1; height: 2px; background: var(--shell-line); opacity: .4; }
+}
+
+// Body copy under a control (index.html:153-154).
+@mixin hint {
+  font-size: 10.5px; color: var(--muted); letter-spacing: .01em; line-height: 1.55; margin-top: 4px;
+
+  b { color: var(--chrome); }
+}

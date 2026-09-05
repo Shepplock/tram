@@ -1,0 +1,31 @@
+.boot {
+  position: fixed; inset: 0; z-index: 90; background: var(--screen);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+
+  &::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .06) 0 1px, transparent 1px 3px);
+  }
+
+  &.out { opacity: 0; transition: opacity .18s linear; pointer-events: none; }
+}
+
+.logo {
+  font-family: var(--mono); font-size: 22px; font-weight: 700; letter-spacing: .28em;
+  text-indent: .28em; text-transform: uppercase; color: var(--ink);
+  transform: translateY(-58vh);
+  animation: bootDrop .58s steps(15, end) forwards;
+}
+
+@keyframes bootDrop { to { transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .logo { animation: none; transform: none; }
+}
+
+.skip {
+  position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 14px; z-index: 2;
+  font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  background: var(--shell); color: var(--chrome); border: 2px solid var(--ink);
+  padding: 9px 13px; cursor: pointer; box-shadow: 3px 3px 0 rgba(0, 0, 0, .3);
+}

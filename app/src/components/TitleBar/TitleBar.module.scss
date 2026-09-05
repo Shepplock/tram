@@ -1,0 +1,26 @@
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 11px) 13px 9px;
+  border-bottom: 3px solid var(--accent);
+}
+.title {
+  font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--chrome);
+  font-weight: 700;
+}
+.sub {
+  margin-left: auto; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+@media (max-width: 359px) { .sub { display: none; } }
+
+.skins { display: flex; gap: 3px; margin-left: 2px; }
+.skinBtn {
+  width: 14px; height: 14px; padding: 0; cursor: pointer;
+  border: 2px solid var(--shell-line); border-radius: 0;
+
+  &[aria-pressed='true'] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--accent); }
+  &.dmg { background: #9BBC0F; }
+  &.pocket { background: #CBD0C0; }
+  &.onebit { background: #FFFFFF; }
+  &.light { background: #0D2A16; }
+  &.atomic { background: #AEA2CE; }
+}

@@ -1,0 +1,14 @@
+.list { display: flex; flex-wrap: wrap; }
+.rowBreak { flex-basis: 100%; height: 0; }
+.chip {
+  display: flex; border: 2px solid var(--shell-line); margin: 0 6px 6px 0; background: var(--shell-dark);
+
+  b {
+    font-weight: 700; font-size: 9.5px; padding: 9px 10px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--chrome);
+  }
+  i {
+    font-style: normal; padding: 9px 9px; color: var(--muted); border-left: 2px solid var(--shell-line);
+    cursor: pointer;
+  }
+}

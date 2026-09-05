@@ -1,0 +1,29 @@
+@use '../../styles/mixins' as *;
+
+.row { margin-bottom: 18px; }
+.label {
+  display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px;
+  font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--chrome); margin-bottom: 3px;
+
+  i { font-style: normal; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+}
+.range {
+  width: 100%; appearance: none; height: 44px; background: transparent; outline: none; margin: 0; display: block;
+
+  &::-webkit-slider-runnable-track { height: 8px; background: var(--shell-dark); border: 2px solid var(--shell-line); }
+  &::-webkit-slider-thumb {
+    appearance: none; width: 36px; height: 36px; margin-top: -12px; border-radius: 50%; border: 2px solid var(--ink);
+    background: var(--accent); box-shadow: 2px 2px 0 rgba(0, 0, 0, .32); cursor: pointer;
+  }
+  &::-moz-range-track { height: 8px; background: var(--shell-dark); border: 2px solid var(--shell-line); }
+  &::-moz-range-thumb {
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--ink);
+    background: var(--accent); box-shadow: 2px 2px 0 rgba(0, 0, 0, .32); cursor: pointer;
+  }
+
+  &.glyph {
+    &::-webkit-slider-thumb { background: var(--thumb) center / contain no-repeat; border: 0; }
+    &::-moz-range-thumb { background: var(--thumb) center / contain no-repeat; border: 0; }
+  }
+}
+.hint { @include hint; margin-top: 5px; }

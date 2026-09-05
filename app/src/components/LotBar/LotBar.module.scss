@@ -1,0 +1,8 @@
+@use '../../styles/mixins' as *;
+
+.bar { display: flex; gap: 5px; margin-top: 8px; position: relative; z-index: 1; }
+.btn {
+  @include pixel-toggle-sm;
+  flex: 1; font-size: 8.5px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 9px 3px; cursor: pointer;
+}

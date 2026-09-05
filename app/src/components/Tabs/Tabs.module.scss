@@ -1,0 +1,11 @@
+.tabs { display: flex; position: sticky; top: 0; z-index: 15; padding: 0 13px; background: var(--shell); }
+.tab {
+  flex: 1; font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 11px 2px; cursor: pointer;
+  background: var(--shell-dark); color: var(--chrome);
+  border: 2px solid var(--shell-line); border-right-width: 0;
+
+  &:last-child { border-right-width: 2px; }
+  &.active { background: var(--screen); color: var(--ink); border-color: var(--ink); }
+}
+.panel { padding: 16px 15px 26px; }

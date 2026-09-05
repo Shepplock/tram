@@ -1,0 +1,32 @@
+@use '../../styles/mixins' as *;
+
+.legend { @include legend; }
+.hint { @include hint; margin: 4px 0 14px; }
+
+.ghost {
+  @include pixel-toggle;
+  width: 100%; font-size: 10px; letter-spacing: .11em; text-transform: uppercase; padding: 13px; cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.check {
+  display: flex; align-items: center; gap: 11px; cursor: pointer; margin-bottom: 4px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--chrome);
+
+  input {
+    appearance: none; -webkit-appearance: none; margin: 0; width: 24px; height: 24px; flex: 0 0 auto;
+    background: var(--shell-dark); border: 2px solid var(--shell-line); cursor: pointer; position: relative;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, .22);
+
+    &:checked {
+      background: var(--screen); border-color: var(--ink); box-shadow: none;
+
+      &::after {
+        content: ''; position: absolute; left: 6px; top: 2px; width: 6px; height: 12px;
+        border: solid var(--ink); border-width: 0 3px 3px 0; transform: rotate(45deg);
+      }
+    }
+  }
+}
+
+.footer { @include hint; margin-top: 22px; text-align: center; }

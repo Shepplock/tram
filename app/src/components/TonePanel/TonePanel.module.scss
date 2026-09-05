@@ -1,0 +1,10 @@
+@use '../../styles/mixins' as *;
+
+.legend { @include legend; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.toggle {
+  @include pixel-toggle;
+  font-size: 9px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 10px 11px; cursor: pointer;
+}
+.hint { @include hint; margin: 4px 0 14px; }

@@ -1,0 +1,56 @@
+.pin { position: sticky; top: 0; z-index: 20; background: var(--shell); padding: 11px 13px 10px; }
+.lcd {
+  background: var(--screen); border: 3px solid var(--ink); padding: 9px; position: relative;
+
+  &::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .055) 0 1px, transparent 1px 3px);
+  }
+}
+.well {
+  background: var(--well); border: 2px solid var(--ink); display: flex; position: relative;
+  justify-content: center; align-items: center; padding: 7px; min-height: 110px; max-height: 40vh; overflow: hidden;
+}
+.canvas { image-rendering: pixelated; max-width: 100%; max-height: calc(40vh - 20px); display: block; }
+.liveButton {
+  background: transparent; border: 0; padding: 0; width: 100%; height: 100%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.empty {
+  color: var(--lcd-2); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  text-align: center; padding: 30px 10px; background: transparent; border: 0; width: 100%; cursor: pointer;
+}
+.liveFlip {
+  position: absolute; right: 6px; bottom: 6px; z-index: 2;
+  font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 7px 9px; cursor: pointer; background: var(--screen); color: var(--ink);
+  border: 2px solid var(--ink); box-shadow: 2px 2px 0 rgba(0, 0, 0, .28);
+}
+
+.meter { margin-top: 10px; position: relative; z-index: 1; }
+.lab {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 8.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--lcd-2);
+}
+.cov { font-size: 15px; letter-spacing: 0; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cov small { font-size: 9px; font-weight: 400; color: var(--lcd-2); }
+.blocks { display: flex; gap: 2px; margin-top: 5px; }
+.block {
+  flex: 1; height: 13px; background: var(--lcd-1); border: 1.5px solid var(--ink);
+
+  &.filled { background: var(--ink); }
+  &.target { background: var(--lcd-2); }
+}
+.verdict { font-size: 9.5px; margin-top: 6px; min-height: 1.3em; letter-spacing: .03em; color: var(--ink); }
+.verdictWarn { font-weight: 700; }
+.blank { font-size: 9.5px; color: var(--ink); letter-spacing: .03em; min-height: 1.2em; opacity: .78; }
+
+.film { display: flex; gap: 5px; overflow-x: auto; margin-top: 9px; padding-bottom: 2px; position: relative; z-index: 1; }
+.thumb {
+  position: relative; flex: 0 0 auto; width: 38px; height: 38px; border: 2px solid var(--ink);
+  background: var(--well); cursor: pointer; overflow: hidden; padding: 0;
+
+  canvas { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
+  &[aria-current='true'] { box-shadow: 0 0 0 2px var(--accent); }
+  &.off { opacity: .35; }
+}

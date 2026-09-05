@@ -1,0 +1,46 @@
+// Five palette "skins", switched at runtime via a `data-skin` attribute on
+// <html>. Kept as CSS custom properties (not SCSS variables) so the switch
+// works without a re-render.
+[data-skin='dmg'] {
+  --shell: #C5C0B4; --shell-dark: #A8A296; --shell-line: #7E7869;
+  --screen: #9BBC0F; --lcd-1: #8BAC0F; --lcd-2: #306230; --ink: #0F380F;
+  --accent: #8B2942; --chrome: #3A3730; --well: #F2F2EE; --page: #1A1A17;
+  --muted: #4E4A3E;
+}
+[data-skin='pocket'] {
+  --shell: #D6D6D2; --shell-dark: #BEBEB9; --shell-line: #8C8C87;
+  --screen: #CBD0C0; --lcd-1: #A8AE9C; --lcd-2: #5C6154; --ink: #1C1C1A;
+  --accent: #2F6F8F; --chrome: #33332F; --well: #F5F5F2; --page: #232320;
+  --muted: #4F4F4B;
+}
+[data-skin='light'] {
+  --shell: #26262B; --shell-dark: #1B1B1F; --shell-line: #4E4E57;
+  --screen: #0D2A16; --lcd-1: #164426; --lcd-2: #4E8F5C; --ink: #8FE07A;
+  --accent: #C7415A; --chrome: #D6D6CE; --well: #F2F2EE; --page: #111114;
+  --muted: #9A9A94;
+}
+[data-skin='atomic'] {
+  --shell: #AEA2CE; --shell-dark: #9A8CBE; --shell-line: #5F5286;
+  --screen: #BFC2AE; --lcd-1: #A5A991; --lcd-2: #565A46; --ink: #1F2118;
+  --accent: #3D2E63; --chrome: #2A2246; --well: #FBFAFF; --page: #3A2F58;
+  --muted: #2E2742;
+}
+// Translucent plastic: surface sheen + hinted grid seen through it.
+// Targets stable, plain (non-CSS-module) classes — `.app-wrap` (globals.scss)
+// and `.bottom-bar` (BottomBar.tsx) are always applied undashed alongside
+// their module classes, specifically so this selector can reach them.
+[data-skin='atomic'] .app-wrap {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 240px),
+    repeating-linear-gradient(90deg, rgba(48, 36, 86, .055) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, rgba(48, 36, 86, .055) 0 1px, transparent 1px 8px);
+}
+[data-skin='atomic'] .bottom-bar {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0));
+}
+[data-skin='onebit'] {
+  --shell: #FFFFFF; --shell-dark: #EDEDED; --shell-line: #000000;
+  --screen: #FFFFFF; --lcd-1: #DDDDDD; --lcd-2: #555555; --ink: #000000;
+  --accent: #000000; --chrome: #000000; --well: #FFFFFF; --page: #9A9A96;
+  --muted: #444444;
+}

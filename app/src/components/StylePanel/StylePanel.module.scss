@@ -1,0 +1,23 @@
+@use '../../styles/mixins' as *;
+
+.legend { @include legend; }
+.grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.algoBtn {
+  display: block; padding: 0; overflow: hidden; text-align: left; line-height: 0; cursor: pointer;
+  background: var(--well); border: 2px solid var(--shell-line); color: var(--ink);
+
+  span {
+    display: block; padding: 8px 7px; line-height: 1.3;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--screen); color: var(--ink); border-color: var(--ink);
+
+    .swatch { border-bottom-color: var(--ink); }
+  }
+}
+.swatch { display: block; width: 100%; image-rendering: pixelated; background: #fff; border-bottom: 2px solid var(--shell-line); }
+.hint { @include hint; margin-top: 14px; }
