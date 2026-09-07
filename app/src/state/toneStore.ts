@@ -4,7 +4,7 @@ import type { ToneSettings } from '../engine/types';
 export const DEFAULT_TONE: ToneSettings = {
   w: 384, sky: 65, white: 180, floor: 40, gamma: 80, sharp: 14, blur: 0,
   invert: false, algo: 'fs', cell: 8, scale: 1, edge: 16, vig: 30,
-  gsort: 0, gshear: 0, gseed: 1, clip: false,
+  gsort: 0, gshear: 0, gseed: 1, clip: false, lyricsFloor: 40,
 };
 
 interface ToneStore {

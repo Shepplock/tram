@@ -122,8 +122,8 @@ export function StylePanel() {
 
       {lyrics && (
         <div style={{ marginTop: 24 }}>
-          <Slider label="Floor" value={active.floor} min={0} max={70} onChange={(v) => setActive({ floor: v })} glyph="F"
-            hint="Caps how dark any cell can get — a nonzero floor can make the grey-stipple and solid-black tiers unreachable. Lower it to unlock the full range." />
+          <Slider label="Floor" value={active.lyricsFloor ?? 40} min={0} max={70} onChange={(v) => setActive({ lyricsFloor: v })} glyph="F"
+            hint="Caps how dark any cell can get — a nonzero floor can make the grey-stipple and solid-black tiers unreachable. Lower it to unlock the full range. Kept separate from the Floor setting used by other styles." />
         </div>
       )}
     </div>

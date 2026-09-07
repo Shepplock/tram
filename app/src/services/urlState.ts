@@ -6,6 +6,7 @@ import type { DeviceSettings } from '../state/deviceStore';
 const URLKEYS: Record<string, keyof ToneSettings> = {
   w: 'w', s: 'sky', p: 'white', f: 'floor', g: 'gamma', a: 'sharp', b: 'blur',
   k: 'algo', z: 'cell', y: 'scale', q: 'gsort', r: 'gshear', d: 'gseed',
+  j: 'lyricsFloor',
 };
 const DEVKEYS: Record<string, keyof DeviceSettings> = { c: 'comp', e: 'gap', t: 'mtop', m: 'mbot' };
 

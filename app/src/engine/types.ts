@@ -31,6 +31,10 @@ export interface ToneSettings {
   gseed: number;
   clip?: boolean;
   lyrics?: LyricsSelection;
+  /** `lyrics` style's own floor, kept separate from `floor` so switching
+   *  away from `lyrics` doesn't carry a lyrics-tuned floor into other
+   *  styles (and vice versa). Defaults to the same 40 as `floor` when unset. */
+  lyricsFloor?: number;
 }
 
 export interface CropRect {
