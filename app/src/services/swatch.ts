@@ -30,7 +30,7 @@ export function renderSwatch(algo: Algo, W: number, H: number, cell: number, sca
 
   const small = isGrid
     ? glyphRender(g, dW, dH, { algo, cell } as ToneSettings)
-    : dither(g, dW, dH, algo);
+    : dither(g, dW, dH, algo, cell);
   const bits = S === 1 ? small : expand(small, dW, dH, W, H);
   return { W, H, pct: 0, bits };
 }

@@ -1,6 +1,6 @@
 export type Algo =
   | 'fs' | 'atkinson' | 'stucki' | 'jarvis'
-  | 'bayer' | 'bayer8' | 'bluenoise' | 'halftone' | 'seuil'
+  | 'bayer' | 'bayer8' | 'bluenoise' | 'halftone' | 'vinyl' | 'seuil'
   | 'glyphes' | 'ascii' | 'gbcam';
 
 /** Tone/style settings for a single photo — mirrors the original `state` object. */
