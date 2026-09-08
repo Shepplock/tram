@@ -4,6 +4,7 @@ import { BottomBar } from './components/BottomBar/BottomBar';
 import { CameraOverlay } from './components/CameraOverlay/CameraOverlay';
 import { CropOverlay } from './components/CropOverlay/CropOverlay';
 import { ExportSheet } from './components/ExportSheet/ExportSheet';
+import { LyricsSearch } from './components/LyricsSearch/LyricsSearch';
 import { PreviewScreen } from './components/PreviewScreen/PreviewScreen';
 import { Tabs } from './components/Tabs/Tabs';
 import { TonePanel } from './components/TonePanel/TonePanel';
@@ -63,6 +64,7 @@ function App() {
       />
       <BottomBar />
       <ExportSheet />
+      <LyricsSearch />
       {/* Rendered outside PreviewScreen's `.pin` (a position:sticky stacking
           context) so their z-index is compared against BottomBar/ExportSheet
           directly, instead of being capped at .pin's own rank. */}

@@ -82,6 +82,27 @@ describe('process', () => {
     expect(Math.abs(a - b)).toBeLessThanOrEqual(0.5);
   });
 
+  it('lyrics uses its own floor, separate from the shared floor setting', () => {
+    const lyrics = { text: 'the quick brown fox jumps over the lazy dog', track: 't', artist: 'a' };
+    // The shared `floor` should have zero effect on lyrics coverage...
+    const a = call({ algo: 'lyrics', floor: 0, lyricsFloor: 40, lyrics }).pct;
+    const b = call({ algo: 'lyrics', floor: 60, lyricsFloor: 40, lyrics }).pct;
+    expect(Math.abs(a - b)).toBeLessThanOrEqual(0.5);
+    // ...while lyricsFloor itself still has the expected effect (a lower
+    // floor unlocks darker tiers, raising ink coverage).
+    const low = call({ algo: 'lyrics', floor: 40, lyricsFloor: 0, lyrics }).pct;
+    const high = call({ algo: 'lyrics', floor: 40, lyricsFloor: 60, lyrics }).pct;
+    expect(low).toBeGreaterThan(high);
+  });
+
+  it("switching away from lyrics doesn't carry its floor into other styles", () => {
+    // A style other than lyrics/ascii should be fully governed by `floor`,
+    // regardless of whatever lyricsFloor happens to be set to.
+    const a = call({ algo: 'fs', floor: 40, lyricsFloor: 0 }).pct;
+    const b = call({ algo: 'fs', floor: 40, lyricsFloor: 70 }).pct;
+    expect(Math.abs(a - b)).toBeLessThanOrEqual(0.001);
+  });
+
   it('grid styles ignore the scale slider', () => {
     const a = call({ algo: 'glyphes', cell: 8, scale: 1 }).pct;
     const b = call({ algo: 'glyphes', cell: 8, scale: 4 }).pct;
@@ -93,13 +114,15 @@ describe('process', () => {
     expect(r.W % 128).toBe(0);
   });
 
-  it('all twelve styles produce a valid, non-degenerate image', () => {
+  it('all thirteen styles produce a valid, non-degenerate image', () => {
     const algos: ToneSettings['algo'][] = [
       'fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise',
-      'halftone', 'seuil', 'glyphes', 'ascii', 'gbcam',
+      'halftone', 'seuil', 'glyphes', 'ascii', 'gbcam', 'lyrics',
     ];
     for (const a of algos) {
-      const r = call({ algo: a, white: 210 });
+      const over: Partial<ToneSettings> = { algo: a, white: 210 };
+      if (a === 'lyrics') over.lyrics = { text: 'the quick brown fox jumps over the lazy dog', track: 't', artist: 'a' };
+      const r = call(over);
       expect(r.bits.length).toBeGreaterThan(0);
       expect(r.pct).toBeGreaterThan(0);
       expect(r.pct).toBeLessThan(100);

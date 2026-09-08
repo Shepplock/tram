@@ -4,6 +4,7 @@ import { paint } from '../../engine/paint';
 import { renderSwatch } from '../../services/swatch';
 import { Slider } from '../Slider/Slider';
 import { useActiveTone } from '../../hooks/useActiveTone';
+import { useLyricsSearchStore } from '../../state/lyricsSearchStore';
 import styles from './StylePanel.module.scss';
 
 const ALGOS: { id: Algo; label: string }[] = [
@@ -19,6 +20,7 @@ const ALGOS: { id: Algo; label: string }[] = [
   { id: 'glyphes', label: 'Glyphes' },
   { id: 'ascii', label: 'ASCII' },
   { id: 'gbcam', label: 'GB Cam' },
+  { id: 'lyrics', label: 'Lyrics' },
   { id: 'vinyl', label: 'Vinyl' },
 ];
 
@@ -49,9 +51,11 @@ function AlgoSwatch({ algo, cell, scale }: { algo: Algo; cell: number; scale: nu
 
 export function StylePanel() {
   const { active, setActive } = useActiveTone();
+  const openLyricsSearch = useLyricsSearchStore((s) => s.openSearch);
 
-  const grid = active.algo === 'glyphes' || active.algo === 'ascii';
+  const grid = active.algo === 'glyphes' || active.algo === 'ascii' || active.algo === 'lyrics';
   const gbcam = active.algo === 'gbcam';
+  const lyrics = active.algo === 'lyrics';
   const vinyl = active.algo === 'vinyl';
   const cell = active.cell ?? 8;
   const scale = active.scale ?? 1;
@@ -66,7 +70,15 @@ export function StylePanel() {
             type="button"
             className={styles.algoBtn}
             aria-pressed={active.algo === a.id}
-            onClick={() => setActive({ algo: a.id })}
+            onClick={() => {
+              if (a.id === 'lyrics') {
+                const returnAlgo = active.algo === 'lyrics' ? 'lyrics' : active.algo;
+                setActive({ algo: 'lyrics' });
+                openLyricsSearch(returnAlgo);
+              } else {
+                setActive({ algo: a.id });
+              }
+            }}
           >
             <AlgoSwatch algo={a.id} cell={cell} scale={scale} />
             <span>{a.label}</span>
@@ -103,13 +115,17 @@ export function StylePanel() {
         </div>
       )}
 
-      {grid && (
+      {grid && !lyrics && (
         <div style={{ marginTop: 24 }}>
           <Slider label="Cell size" value={cell} min={4} max={24} onChange={(v) => setActive({ cell: v })} glyph="C"
             hint="Larger cells read more graphic and hold less detail." />
         </div>
       )}
 
+      {lyrics && (
+        <div style={{ marginTop: 24 }}>
+          <Slider label="Floor" value={active.lyricsFloor ?? 40} min={0} max={70} onChange={(v) => setActive({ lyricsFloor: v })} glyph="F"
+            hint="Caps how dark any cell can get — a nonzero floor can make the grey-stipple and solid-black tiers unreachable. Lower it to unlock the full range. Kept separate from the Floor setting used by other styles." />
       {vinyl && (
         <div style={{ marginTop: 24 }}>
           <Slider label="Groove width" value={cell} min={4} max={10} onChange={(v) => setActive({ cell: v })} glyph="G"

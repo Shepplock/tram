@@ -24,7 +24,7 @@ export function process(o: ProcessInput): ProcessResult {
 
   const H = Math.max(1, Math.round(c.h * W / c.w));
   /* Glyphs already have their own cell size: no extra dilation. */
-  const grid = st.algo === 'glyphes' || st.algo === 'ascii';
+  const grid = st.algo === 'glyphes' || st.algo === 'ascii' || st.algo === 'lyrics';
   const S = grid ? 1 : Math.max(1, st.scale || 1);
   const dW = Math.max(1, Math.round(W / S)), dH = Math.max(1, Math.round(H / S));
   const { work, wctx } = getWork();
@@ -56,8 +56,11 @@ export function process(o: ProcessInput): ProcessResult {
   const bp = 20, wp = Math.max(30, st.white), gm = st.gamma / 100;
   const raw = st.clip ? Float32Array.from(g) : null;
   /* The densest character only deposits ~50% ink: applying the floor on top
-   *  of it halved coverage and made ASCII nearly blank. */
-  const fl = st.algo === 'ascii' ? 0 : st.floor / 100;
+   *  of it halved coverage and made ASCII nearly blank. `lyrics` uses its
+   *  own floor (kept separate in state) since its tone tiers are calibrated
+   *  against the full 0-1 ink range, and a shared floor would otherwise
+   *  leak between it and every other style when switching between them. */
+  const fl = st.algo === 'ascii' ? 0 : (st.algo === 'lyrics' ? st.lyricsFloor ?? 40 : st.floor) / 100;
   let blank = 0;
   for (let i = 0; i < g.length; i++) {
     if (!st.invert && g[i] >= wp) blank++;

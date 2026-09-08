@@ -1,4 +1,5 @@
 import { createCanvas } from './canvas';
+import { BAYER8 } from './kernels';
 import type { ToneSettings } from './types';
 
 const MONO = 'ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace';
@@ -67,6 +68,12 @@ function buildTiers(): void {
 
 const CHARS = " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
+/** Collapses whitespace/newlines to single spaces so the `lyrics` style can
+ *  walk a flat character stream with no line-break special-casing. */
+export function flattenLyrics(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 interface Ramp {
   list: { ch: string; ink: number }[];
   adv: number;
@@ -99,9 +106,38 @@ function buildRamp(F: number): Ramp {
   return ramp;
 }
 
+/** Background stipple density for the period tier (0.06-0.15 ink) — kept
+ *  well below the first letter tier's density so the blank->period->letter
+ *  ramp keeps climbing smoothly. */
+const PERIOD_DENSITY = 0.0625;
+
+/** Background stipple density per lyrics letter-tier (see the comment at
+ *  the call site for why this isn't evenly spaced). Only the first entry
+ *  changed from the original tuning (was 0, a flat-white tier) — the rest
+ *  keep the spacing already verified to climb monotonically through the
+ *  black/white letter-color flip. */
+const LYRICS_DENSITIES = [0.0625, 0.125, 0.25, 0.375, 0.4375, 0.625, 0.75, 0.875];
+
+/** Fills a cell with a Bayer-dithered black/white stipple at the given
+ *  density (0-1 fraction of pixels turned black). BAYER8 is a permutation of
+ *  0-63, so thresholding it at `density * 64` selects exactly that fraction
+ *  of cells (8x8 gives finer-grained density steps than the 4x4 BAYER matrix
+ *  would) — the printer is strictly 1-bit, so "grey" has to be an actual
+ *  dot pattern rather than a flat pixel value. */
+function stippleCell(x: CanvasRenderingContext2D, x0: number, y0: number, C: number, density: number): void {
+  x.fillStyle = '#fff'; x.fillRect(x0, y0, C, C);
+  x.fillStyle = '#000';
+  const threshold = density * 64;
+  for (let yy = 0; yy < C; yy++) {
+    for (let xx = 0; xx < C; xx++) {
+      if (BAYER8[yy % 8][xx % 8] < threshold) x.fillRect(x0 + xx, y0 + yy, 1, 1);
+    }
+  }
+}
+
 /** Renders the image as shapes or characters, then thresholds to 1 bit. */
 export function glyphRender(g: Float32Array, W: number, H: number, st: ToneSettings): Uint8ClampedArray {
-  const C = Math.max(st.algo === 'ascii' ? 9 : 4, st.cell || 8);
+  const C = Math.max(st.algo === 'lyrics' ? 16 : st.algo === 'ascii' ? 9 : 4, st.cell || 8);
   const c = createCanvas();
   c.width = W; c.height = H;
   const x = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
@@ -132,6 +168,70 @@ export function glyphRender(g: Float32Array, W: number, H: number, st: ToneSetti
           if (d < bd) { bd = d; best = k; }
         }
         x.fillText(r.list[best].ch, cx * A, cy * LH + C * 0.88);
+      }
+    }
+  } else if (st.algo === 'lyrics') {
+    /* Tone comes from density/weight, not symbol choice: the lyrics must stay
+     *  in reading order, so unlike `ascii` this can't pick characters by ink
+     *  match. Every non-blank cell gets a Bayer-dithered stipple background
+     *  matching its ink tier (this is a thermal printer, so "grey" has to be
+     *  an actual dot pattern, not a flat pixel value) — including the period
+     *  tier and the very first letter tier, which otherwise would default to
+     *  flat white and lose a whole swath of the lighter-to-mid tonal range.
+     *  A space from the lyric text itself still consumes a cell, but it
+     *  still paints that cell's tier background — only the letter itself is
+     *  skipped, so word gaps read as the photo's actual tone rather than as
+     *  blank holes punched through it. Letter color flips to white once the
+     *  stipple gets darker than the letter itself so it stays legible
+     *  against its own background. At the very darkest end the cell goes
+     *  true solid black with no letter cut out of it at all — symmetric with
+     *  the true-blank tier at the lightest end, and likewise doesn't consume
+     *  a character from the lyric stream. */
+    const text = (st.lyrics?.text ?? '').toUpperCase();
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    const size = Math.round(C * 0.78);
+    let pos = 0;
+    for (let cy = 0; cy * C < H; cy++) {
+      for (let cx = 0; cx * C < W; cx++) {
+        const ink = cellInk(cx * C, cy * C, C, C);
+        if (ink < 0.06) continue;
+        const px = cx * C + C / 2, py = cy * C + C / 2;
+        if (ink < 0.15) {
+          // Below ~8px a period anti-aliases too faintly to survive the
+          // 1-bit threshold below — it would render invisible.
+          stippleCell(x, cx * C, cy * C, C, PERIOD_DENSITY);
+          x.font = Math.max(8, Math.round(C * 0.5)) + 'px ' + MONO;
+          x.fillStyle = '#000';
+          x.fillText('.', px, py);
+          continue;
+        }
+        // 9 tiers across 0.15-1.0 (blank+period only get the bottom 0.15 of
+        // the range — most of the tonal range is letters, so the image
+        // stays recognizable): tIdx 0-7 are letter tiers, tIdx 8 is true
+        // black (no letter).
+        const tIdx = Math.min(8, Math.floor((ink - 0.15) / (0.85 / 9)));
+        if (tIdx === 8) {
+          x.fillStyle = '#000';
+          x.fillRect(cx * C, cy * C, C, C);
+          continue;
+        }
+        if (!text.length) continue;
+        const ch = text[pos % text.length];
+        pos++;
+        /* Not evenly spaced: a black letter ADDS ink on top of its
+         *  background stipple, a white letter CUTS a hole out of its
+         *  background stipple, so the two regimes aren't continuous —
+         *  stepping the density evenly straight across the black/white
+         *  letter-color switch would make one tier read as less ink than the
+         *  tier before it. The white-letter side starts at a deliberately
+         *  higher density than the black-letter side ended on, so total ink
+         *  keeps climbing every tier despite the color flip. */
+        const density = LYRICS_DENSITIES[tIdx];
+        if (density > 0) stippleCell(x, cx * C, cy * C, C, density);
+        if (ch === ' ') continue;
+        x.font = 'bold ' + size + 'px ' + MONO;
+        x.fillStyle = density < 0.5 ? '#000' : '#fff';
+        x.fillText(ch, px, py);
       }
     }
   } else {
