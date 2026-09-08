@@ -21,6 +21,7 @@ const ALGOS: { id: Algo; label: string }[] = [
   { id: 'ascii', label: 'ASCII' },
   { id: 'gbcam', label: 'GB Cam' },
   { id: 'lyrics', label: 'Lyrics' },
+  { id: 'vinyl', label: 'Vinyl' },
 ];
 
 const SWATCH_H = 52;
@@ -55,6 +56,7 @@ export function StylePanel() {
   const grid = active.algo === 'glyphes' || active.algo === 'ascii' || active.algo === 'lyrics';
   const gbcam = active.algo === 'gbcam';
   const lyrics = active.algo === 'lyrics';
+  const vinyl = active.algo === 'vinyl';
   const cell = active.cell ?? 8;
   const scale = active.scale ?? 1;
 
@@ -124,6 +126,10 @@ export function StylePanel() {
         <div style={{ marginTop: 24 }}>
           <Slider label="Floor" value={active.lyricsFloor ?? 40} min={0} max={70} onChange={(v) => setActive({ lyricsFloor: v })} glyph="F"
             hint="Caps how dark any cell can get — a nonzero floor can make the grey-stipple and solid-black tiers unreachable. Lower it to unlock the full range. Kept separate from the Floor setting used by other styles." />
+      {vinyl && (
+        <div style={{ marginTop: 24 }}>
+          <Slider label="Groove width" value={cell} min={4} max={10} onChange={(v) => setActive({ cell: v })} glyph="G"
+            hint="Distance between spiral grooves. Wider grooves read more graphic, tighter grooves hold more tonal detail." />
         </div>
       )}
     </div>

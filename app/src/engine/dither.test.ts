@@ -36,7 +36,7 @@ describe('dither', () => {
   });
 
   it('pure white never deposits ink, for any algorithm', () => {
-    for (const a of ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise', 'halftone']) {
+    for (const a of ['fs', 'atkinson', 'stucki', 'jarvis', 'bayer', 'bayer8', 'bluenoise', 'halftone', 'vinyl']) {
       expect(ink(dither(flat(24, 24, 255), 24, 24, a))).toBe(0);
     }
   });
@@ -70,6 +70,29 @@ describe('dither', () => {
     };
     const g = flat(64, 64, 255 * 0.85);
     expect(iso(dither(g, 64, 64, 'halftone'))).toBeLessThan(iso(dither(g, 64, 64, 'fs')));
+  });
+
+  it('vinyl fades its groove contrast toward the center, like a record label', () => {
+    const W = 120, H = 120, cx = W / 2, cy = H / 2;
+    const b = dither(flat(W, H, 100), W, H, 'vinyl');
+    const inkIn = (rMin: number, rMax: number) => {
+      let hit = 0, total = 0;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const r = Math.hypot(x - cx, y - cy);
+          if (r < rMin || r >= rMax) continue;
+          total++;
+          if (b[y * W + x] < 128) hit++;
+        }
+      }
+      return hit / total;
+    };
+    // The groove geometry is identical everywhere, but near the center most
+    // of its ink is dithered away (opacity fade), leaving only a sparse
+    // dusting. Far out, the groove is at full opacity — solid wherever the
+    // spiral geometry calls for ink.
+    expect(inkIn(0, 15)).toBeLessThan(0.15);
+    expect(inkIn(50, 60)).toBeGreaterThan(0.3);
   });
 });
 

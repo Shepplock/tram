@@ -1,7 +1,7 @@
 export type Algo =
   | 'fs' | 'atkinson' | 'stucki' | 'jarvis'
   | 'bayer' | 'bayer8' | 'bluenoise' | 'halftone' | 'seuil'
-  | 'glyphes' | 'ascii' | 'gbcam' | 'lyrics';
+  | 'glyphes' | 'ascii' | 'gbcam' | 'vinyl' | 'lyrics';
 
 /** A song's lyrics picked for the `lyrics` style — `text` is pre-flattened
  *  (whitespace/newlines collapsed) so `glyph.ts` can just walk a flat stream. */
