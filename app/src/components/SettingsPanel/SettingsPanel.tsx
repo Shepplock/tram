@@ -30,8 +30,14 @@ export function SettingsPanel() {
 
   const comp = solveComp(midStep);
 
-  const printChart = () => show([buildChart(tone.w)]);
-  const printTest = () => show([buildTest(tone.w)]);
+  const printChart = () => {
+    const rebuild = () => [buildChart(useToneStore.getState().tone.w)];
+    show(rebuild(), rebuild);
+  };
+  const printTest = () => {
+    const rebuild = () => [buildTest(useToneStore.getState().tone.w)];
+    show(rebuild(), rebuild);
+  };
 
   const applyCalibration = () => {
     setDevice({ comp: solveComp(midStep) });

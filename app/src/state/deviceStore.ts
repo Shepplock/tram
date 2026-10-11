@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { Darkness } from '../printer/protocol';
 import { storage } from '../services/storage';
 
 /** Describes the printer/paper, not a photo — one object, one storage key. */
@@ -11,10 +12,12 @@ export interface DeviceSettings {
   outMode: 'bande' | 'frames';
   fps: number;
   capture: 'photo' | 'video';
+  /** Bluetooth printer head energy, 1 (light) to 4 (dark). */
+  darkness: Darkness;
 }
 
 export const DEFAULT_DEVICE: DeviceSettings = {
-  comp: 0, gap: 16, mtop: 0, mbot: 0, num: false, outMode: 'bande', fps: 8, capture: 'photo',
+  comp: 0, gap: 16, mtop: 0, mbot: 0, num: false, outMode: 'bande', fps: 8, capture: 'photo', darkness: 4,
 };
 
 const STORAGE_KEY = 'pp:device';

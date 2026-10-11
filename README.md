@@ -114,9 +114,12 @@ over your local Wi-Fi, no external service needed:
 
 If your phone can't reach your computer over Wi-Fi (e.g. client-isolated
 guest networks, or you're not on the same network at all), a tunnel is the
-fallback — `npx cloudflared tunnel --url http://localhost:5173` or
-`npx localtunnel --port 5173`, no signup needed for either. This adds a
-third-party relay in the middle, though, so it's less reliable than the
+fallback — `npx cloudflared tunnel --url https://localhost:5173 --no-tls-verify` or
+`npx localtunnel --port 5173`, no signup needed for either. Use the address cloudflared prints in your terminal a few seconds after it starts. It's in a box like this:
+Your quick Tunnel has been created! Visit it at:
+https://some-random-words.trycloudflare.com
+
+This adds a third-party relay in the middle, though, so it's less reliable than the
 same-Wi-Fi method above (it's also the reason the dev server has
 `server.allowedHosts: true` in `vite.config.ts` — otherwise Vite rejects
 requests carrying a tunnel's hostname).
@@ -140,6 +143,10 @@ npm ci        # like `npm install`, but exact/reproducible from the lockfile
 npx vitest run
 npm run build # outputs to app/dist/
 ```
+
+## Printing
+
+With a compatible thermall paper printer ([example](https://www.amazon.fr/eSynic-Imprimante-85%C3%9783%C3%9740mm-Impression-Autocollante/dp/B0FXWDRT99?th=1)): if you're on iOs, open the app url in [Bluefy app](https://bluefy.app/) - on Android it works as is. Connect to the printer, pick the darkness, and print.
 
 ### One-time repo setup (already done, noted for reference)
 
